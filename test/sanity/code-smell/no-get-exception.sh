@@ -14,7 +14,6 @@ get_exception=$(find . -path ./test/runner/.tox -prune \
         -o -path ./lib/ansible/modules/network/junos -prune \
         -o -path ./lib/ansible/modules/network/vyos -prune \
         -o -path ./lib/ansible/modules/network/fortios -prune \
-        -o -path ./lib/ansible/modules/network/f5 -prune \
         -o -path ./lib/ansible/modules/network/cloudengine -prune \
         -o -path ./lib/ansible/modules/network/aos -prune \
         -o -path ./lib/ansible/modules/network/eos -prune \
