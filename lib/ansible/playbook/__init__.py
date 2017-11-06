@@ -101,7 +101,7 @@ class Playbook:
                     self._entries.extend(pb._entries)
                 else:
                     which = entry.get('import_playbook', entry.get('include', entry))
-                    display.display("skipping playbook '%s' due to conditional test failure" % which, color=C.COLOR_SKIP)
+                    display.skip("skipping playbook '%s' due to conditional test failure" % which)
             else:
                 entry_obj = Play.load(entry, variable_manager=variable_manager, loader=self._loader)
                 self._entries.append(entry_obj)

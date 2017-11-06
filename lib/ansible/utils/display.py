@@ -35,16 +35,10 @@ from termios import TIOCGWINSZ
 
 from ansible import constants as C
 from ansible.errors import AnsibleError
-from ansible.module_utils._text import to_bytes, to_text
+from ansible.module_utils.six import PY3
+from ansible.module_utils.six.moves import input
+from ansible.module_utils._text import to_bytes, to_native, to_text
 from ansible.utils.color import stringc
-
-
-try:
-    # Python 2
-    input = raw_input
-except NameError:
-    # Python 3, we already have raw_input
-    pass
 
 
 logger = None
@@ -53,7 +47,7 @@ if C.DEFAULT_LOG_PATH:
     path = C.DEFAULT_LOG_PATH
     if (os.path.exists(path) and os.access(path, os.W_OK)) or os.access(os.path.dirname(path), os.W_OK):
         logging.basicConfig(filename=path, level=logging.DEBUG, format='%(asctime)s %(name)s %(message)s')
-        mypid = str(os.getpid())
+        mypid = to_native(os.getpid())
         user = getpass.getuser()
         logger = logging.getLogger("p=%s u=%s | " % (mypid, user))
     else:
@@ -67,162 +61,193 @@ b_COW_PATHS = (
 )
 
 
-class Display:
+# Toshio's thoughts on what this should look like eventually:
+#
+# * We should have a logging framework (bundle twiggy?  Write a wrapper around logging (That would
+#   likely look like structlogging)?  Do our own thing?  Supporting fields will make this an easier
+#   transition to json or other formatted output which makes twiggy attractive)
+# * Write a shim callback plugin which delivers the callback events to the logging framework.
+#   Logging should receive a superset of callback events
+# * Logging framework encompasses v() levels, and standard logging levels.
+# * Logging output plugins can log to files or screen
+# * Logging formatters can construct other formats such as json
+# * stdout callback plugins become UI-plugins
+# * They receive enough information to write needed info to stdout.
+# * For something like tower which wants to capture every piece of information, we should give
+#   a Null ui plugin so that nothing is written to stdout by the UI.
+# * Then use a json formatted, stdout output plugin combo to write all of the data to a json stream
+#   on stdout.
+# * Using fields in the json stream, tower can capture and re-assemble task information as it
+#   streams out.
+# * Command line switches and env vars for verbosity and debug lose their meaning
+#   * Instead, user configures the combination of ui-plugins and logging plugins to achieve their needs.
+#   * ui and logging plugins could add their own CLI flags and debug switches that mirror our
+#     current tooling.  Perhaps we should define standard CLI that they can make use of?
+# * Is there even a need for a ui-plugin in this scheme?  Probably there is.  Logging will get
+#   distinct small tidbits of information.  A ui-plugin needs to operate on a larger chunk at a time.
+# * Is there a need for non-ui plugins in this scheme?  Perhaps not.
+# * Is there a need for logging plugins?  I think so.  Routing tiny messages as we do for logging
+#   doesn't really match up with the idea of ui plugins.
+# * Where do prompts fit in?  Seems like we should emit an event when we need new data.  Callbacks
+#   can then ask for the data, get it from the user, and then return it to the calling code.
+#   * Problem: Currently callbacks don't return data?  Answer: I think callbacks are still
+#     synchronous.  So we can return information, we just don't.  This is another contrast to
+#     logging.
 
-    def __init__(self, verbosity=0):
+class ConsoleOutput:
+    def __init__(self):
 
         self.columns = None
-        self.verbosity = verbosity
 
-        # list of all deprecation messages to prevent duplicate display
-        self._deprecations = {}
-        self._warns = {}
-        self._errors = {}
-
-        self.b_cowsay = None
         self.noncow = C.ANSIBLE_COW_SELECTION
-
-        self.set_cowsay_info()
+        self.b_cowsay = self._cowsay_path()
 
         if self.b_cowsay:
             try:
                 cmd = subprocess.Popen([self.b_cowsay, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 (out, err) = cmd.communicate()
-                self.cows_available = set([to_text(c) for c in out.split()])
+                self.cows_available = set(to_text(c) for c in out.split())
                 if C.ANSIBLE_COW_WHITELIST:
-                    self.cows_available = set(C.ANSIBLE_COW_WHITELIST).intersection(self.cows_available)
+                    self.cows_available.intersection_update(C.ANSIBLE_COW_WHITELIST)
             except:
                 # could not execute cowsay for some reason
                 self.b_cowsay = False
 
-        self._set_column_width()
+        self.columns = self._console_width()
+        self.stdout_encoding = self._output_encoding()
 
-    def set_cowsay_info(self):
+    #
+    # Helpers
+    #
+
+    @staticmethod
+    def _output_encoding():
+        """Return the encoding to encode information for the standard streams"""
+        encoding = locale.getpreferredencoding()
+        # https://bugs.python.org/issue6202
+        # Python2 hardcodes an obsolete value on Mac.  Use MacOSX defaults
+        # instead.
+        if encoding in ('mac-roman',):
+            encoding = 'utf-8'
+        return encoding
+
+    @staticmethod
+    def _console_width():
+        if os.isatty(0):
+            tty_size = unpack('HHHH', fcntl.ioctl(0, TIOCGWINSZ, pack('HHHH', 0, 0, 0, 0)))[1]
+        else:
+            tty_size = 0
+        return max(79, tty_size - 1)
+
+    @staticmethod
+    def _cowsay_path():
+        b_cowsay = False
+
         if not C.ANSIBLE_NOCOWS:
             for b_cow_path in b_COW_PATHS:
                 if os.path.exists(b_cow_path):
-                    self.b_cowsay = b_cow_path
+                    b_cowsay = b_cow_path
+                    break
 
-    def display(self, msg, color=None, stderr=False, screen_only=False, log_only=False):
-        """ Display a message to the user
+        return b_cowsay
 
-        Note: msg *must* be a unicode string to prevent UnicodeError tracebacks.
-        """
+    # Perhaps prompting should move into callbacks eventually (if we change callbacks to be
+    # ui-plugins)
+    def print_prompt(self, msg):
+        try:
+            fd = os.open('/dev/tty', os.O_RDWR|os.O_NOCTTY)
+            stream = os.fdopen(fd, 'w+', 1)
+        except EnvironmentError as e:
+            stream = sys.stderr
 
-        nocolor = msg
+        prompt_string = to_bytes(msg, encoding=self._output_encoding)
+        if PY3:
+            # Convert back into text on python3.  We do this double conversion
+            # to get rid of characters that are illegal in the user's locale
+            prompt_string = to_text(prompt_string)
+
+        stream.write(prompt_string)
+
+    def prompt(self, msg, private=False):
+        if private:
+            prompt_string = to_bytes(msg, encoding=self._output_encoding)
+            if PY3:
+                # Convert back into text on python3.  We do this double conversion
+                # to get rid of characters that are illegal in the user's locale
+                prompt_string = to_text(prompt_string)
+
+            return getpass.getpass(prompt_string)
+        else:
+            print_prompt(msg)
+            return input()
+
+    #
+    # Ways that we output.  These should only be called directly by callback plugins
+    # and other display methods
+    #
+
+    def write_log(self, msg, level='INFO'):
+        msg = msg.lstrip(u'\n')
+
+        msg = to_bytes(msg)
+        if PY3:
+            # Convert back to text string on python3
+            # We first convert to a byte string so that we get rid of
+            # characters that are invalid in the user's locale
+            msg = to_text(msg, self._output_encoding)
+
+        if level == 'ERROR':
+            logger.error(msg)
+        else:
+            logger.info(msg)
+
+    def write_screen(self, msg, color=None, stderr=False, drop_whitespace=True):
+        msg = textwrap.wrap(msg, self.columns, drop_whitespace=drop_whitespace)
+
         if color:
             msg = stringc(msg, color)
 
+        if not msg.endswith(u'\n'):
+            msg += msg + u'\n'
+
+        msg = to_bytes(msg, encoding=self._output_encoding)
+
+        if not stderr:
+            fileobj = sys.stdout
+        else:
+            fileobj = sys.stderr
+
+        if PY3:
+            # We are going to write bytes.  On py3, the file object takes text which it has to
+            # decode so we need to use the raw buffer instead
+            fileobj = fileobj.buffer
+
+        fileobj.write(msg)
+
+        try:
+            fileobj.flush()
+        except IOError as e:
+            # Ignore EPIPE in case fileobj has been prematurely closed, eg.
+            # when piping to "head -n1"
+            if e.errno != errno.EPIPE:
+                raise
+
+    def display(self, msg, color=None, stderr=False, screen_only=False, log_only=False,
+                drop_whitespace=True):
+        """ Display a message to the user
+
+        Note: msg *must* be a unicode string to prevent UnicodeError tracebacks.
+
+        .. note:: Deprecated.  Call :meth:`ConsoleOutput.write_log` and
+            :meth:`ConsoleOutput.write_screen` separately instead.
+        """
+
         if not log_only:
-            if not msg.endswith(u'\n'):
-                msg2 = msg + u'\n'
-            else:
-                msg2 = msg
+            self.write_screen(msg, color=color, stderr=stderr, screen_only=screen_only,
+                              log_only=log_only, drop_whitespace=drop_whitespace)
 
-            msg2 = to_bytes(msg2, encoding=self._output_encoding(stderr=stderr))
-            if sys.version_info >= (3,):
-                # Convert back to text string on python3
-                # We first convert to a byte string so that we get rid of
-                # characters that are invalid in the user's locale
-                msg2 = to_text(msg2, self._output_encoding(stderr=stderr), errors='replace')
-
-            if not stderr:
-                fileobj = sys.stdout
-            else:
-                fileobj = sys.stderr
-
-            fileobj.write(msg2)
-
-            try:
-                fileobj.flush()
-            except IOError as e:
-                # Ignore EPIPE in case fileobj has been prematurely closed, eg.
-                # when piping to "head -n1"
-                if e.errno != errno.EPIPE:
-                    raise
-
-        if logger and not screen_only:
-            msg2 = nocolor.lstrip(u'\n')
-
-            msg2 = to_bytes(msg2)
-            if sys.version_info >= (3,):
-                # Convert back to text string on python3
-                # We first convert to a byte string so that we get rid of
-                # characters that are invalid in the user's locale
-                msg2 = to_text(msg2, self._output_encoding(stderr=stderr))
-
-            if color == C.COLOR_ERROR:
-                logger.error(msg2)
-            else:
-                logger.info(msg2)
-
-    def v(self, msg, host=None):
-        return self.verbose(msg, host=host, caplevel=0)
-
-    def vv(self, msg, host=None):
-        return self.verbose(msg, host=host, caplevel=1)
-
-    def vvv(self, msg, host=None):
-        return self.verbose(msg, host=host, caplevel=2)
-
-    def vvvv(self, msg, host=None):
-        return self.verbose(msg, host=host, caplevel=3)
-
-    def vvvvv(self, msg, host=None):
-        return self.verbose(msg, host=host, caplevel=4)
-
-    def vvvvvv(self, msg, host=None):
-        return self.verbose(msg, host=host, caplevel=5)
-
-    def debug(self, msg):
-        if C.DEFAULT_DEBUG:
-            self.display("%6d %0.5f: %s" % (os.getpid(), time.time(), msg), color=C.COLOR_DEBUG)
-
-    def verbose(self, msg, host=None, caplevel=2):
-        if self.verbosity > caplevel:
-            if host is None:
-                self.display(msg, color=C.COLOR_VERBOSE)
-            else:
-                self.display("<%s> %s" % (host, msg), color=C.COLOR_VERBOSE, screen_only=True)
-
-    def deprecated(self, msg, version=None, removed=False):
-        ''' used to print out a deprecation message.'''
-
-        if not removed and not C.DEPRECATION_WARNINGS:
-            return
-
-        if not removed:
-            if version:
-                new_msg = "[DEPRECATION WARNING]: %s. This feature will be removed in version %s." % (msg, version)
-            else:
-                new_msg = "[DEPRECATION WARNING]: %s. This feature will be removed in a future release." % (msg)
-            new_msg = new_msg + " Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.\n\n"
-        else:
-            raise AnsibleError("[DEPRECATED]: %s.\nPlease update your playbooks." % msg)
-
-        wrapped = textwrap.wrap(new_msg, self.columns, drop_whitespace=False)
-        new_msg = "\n".join(wrapped) + "\n"
-
-        if new_msg not in self._deprecations:
-            self.display(new_msg.strip(), color=C.COLOR_DEPRECATE, stderr=True)
-            self._deprecations[new_msg] = 1
-
-    def warning(self, msg, formatted=False):
-
-        if not formatted:
-            new_msg = "\n[WARNING]: %s" % msg
-            wrapped = textwrap.wrap(new_msg, self.columns)
-            new_msg = "\n".join(wrapped) + "\n"
-        else:
-            new_msg = "\n[WARNING]: \n%s" % msg
-
-        if new_msg not in self._warns:
-            self.display(new_msg, color=C.COLOR_WARN, stderr=True)
-            self._warns[new_msg] = 1
-
-    def system_warning(self, msg):
-        if C.SYSTEM_WARNINGS:
-            self.warning(msg)
+        if not screen_only:
+            self.write_log(msg)
 
     def banner(self, msg, color=None, cows=True):
         '''
@@ -233,7 +258,7 @@ class Display:
                 self.banner_cowsay(msg)
                 return
             except OSError:
-                self.warning("somebody cleverly deleted cowsay or something during the PB run.  heh.")
+                self.warning(u"somebody cleverly deleted cowsay or something during the PB run.  heh.")
 
         msg = msg.strip()
         star_len = self.columns - len(msg)
@@ -259,36 +284,35 @@ class Display:
         (out, err) = cmd.communicate()
         self.display(u"%s\n" % to_text(out), color=color)
 
-    def error(self, msg, wrap_text=True):
-        if wrap_text:
-            new_msg = u"\n[ERROR]: %s" % msg
-            wrapped = textwrap.wrap(new_msg, self.columns)
-            new_msg = u"\n".join(wrapped) + u"\n"
-        else:
-            new_msg = u"ERROR! %s" % msg
-        if new_msg not in self._errors:
-            self.display(new_msg, color=C.COLOR_ERROR, stderr=True)
-            self._errors[new_msg] = 1
 
-    @staticmethod
-    def prompt(msg, private=False):
-        prompt_string = to_bytes(msg, encoding=Display._output_encoding())
-        if sys.version_info >= (3,):
-            # Convert back into text on python3.  We do this double conversion
-            # to get rid of characters that are illegal in the user's locale
-            prompt_string = to_text(prompt_string)
+class Display:
 
-        if private:
-            return getpass.getpass(prompt_string)
-        else:
-            return input(prompt_string)
+    def __init__(self, verbosity=0):
+
+        self.columns = None
+        self.verbosity = verbosity
+
+        self.columns = self._ideal_column_width()
+        self.stdout_encoding = self._output_encoding()
+
+        # list of all deprecation messages to prevent duplicate display
+        self._deprecations = set()
+        self._warns = set()
+        self._errors = set()
+
+        self.output = ConsoleOutput()
+
+    #
+    # UI Elements.  These output non-data to the screen.
+    #
+
+    def ui(self, string):
+        self.output.display(string, stderr=True)
 
     def do_var_prompt(self, varname, private=True, prompt=None, encrypt=None, confirm=False, salt_size=None, salt=None, default=None):
 
         result = None
         if sys.__stdin__.isatty():
-
-            do_prompt = self.prompt
 
             if prompt and default is not None:
                 msg = "%s [%s]: " % (prompt, default)
@@ -299,13 +323,13 @@ class Display:
 
             if confirm:
                 while True:
-                    result = do_prompt(msg, private)
-                    second = do_prompt("confirm " + msg, private)
+                    result = prompt(msg, private)
+                    second = prompt("confirm " + msg, private)
                     if result == second:
                         break
-                    self.display("***** VALUES ENTERED DO NOT MATCH ****")
+                    self.v0("***** VALUES ENTERED DO NOT MATCH ****")
             else:
-                result = do_prompt(msg, private)
+                result = self.prompt(msg, private)
         else:
             result = None
             self.warning("Not prompting as we are not in interactive mode")
@@ -323,19 +347,106 @@ class Display:
         result = to_text(result, errors='surrogate_or_strict')
         return result
 
-    @staticmethod
-    def _output_encoding(stderr=False):
-        encoding = locale.getpreferredencoding()
-        # https://bugs.python.org/issue6202
-        # Python2 hardcodes an obsolete value on Mac.  Use MacOSX defaults
-        # instead.
-        if encoding in ('mac-roman',):
-            encoding = 'utf-8'
-        return encoding
+    #
+    # Things that we output.  General code can call these.  We may want to turn some of these into
+    # callback methods in the future.
+    #
 
-    def _set_column_width(self):
-        if os.isatty(0):
-            tty_size = unpack('HHHH', fcntl.ioctl(0, TIOCGWINSZ, pack('HHHH', 0, 0, 0, 0)))[1]
+    def skip(self, msg):
+        """
+        This method should almost certainly be a callback method
+        """
+        return self.display(msg, color=C.COLOR_SKIP, stderr=True)
+
+    def v(self, msg, host=None):
+        return self.verbose(msg, host=host, caplevel=0)
+
+    def vv(self, msg, host=None):
+        return self.verbose(msg, host=host, caplevel=1)
+
+    def vvv(self, msg, host=None):
+        return self.verbose(msg, host=host, caplevel=2)
+
+    def vvvv(self, msg, host=None):
+        return self.verbose(msg, host=host, caplevel=3)
+
+    def vvvvv(self, msg, host=None):
+        return self.verbose(msg, host=host, caplevel=4)
+
+    def vvvvvv(self, msg, host=None):
+        return self.verbose(msg, host=host, caplevel=5)
+
+    def verbose(self, msg, host=None, caplevel=2):
+        if self.verbosity > caplevel:
+            if host is None:
+                self.display(msg, color=C.COLOR_VERBOSE, stderr=True)
+            else:
+                self.display("<%s> %s" % (host, msg), color=C.COLOR_VERBOSE, screen_only=True, stderr=True)
+
+    #
+    # The following closely mirror logging output levels and probably should be normalized.
+    #
+
+    def trace(self, traceback):
+        new_msg = u"ERROR! %s" % traceback
+        if new_msg not in self._errors:
+            self.display(new_msg, color=C.COLOR_ERROR, stderr=True)
+            self._errors.add(new_msg)
+
+    def debug(self, msg):
+        if C.DEFAULT_DEBUG:
+            self.display("%6d %0.5f: %s" % (os.getpid(), time.time(), msg), color=C.COLOR_DEBUG, stderr=True)
+
+    def notice(self, msg, log_only=False):
+        """This replaces the direct call to display.  Only callbacks should use that"""
+        return self.display(msg, stderr=True)
+
+    def deprecated(self, msg, version=None, removed=False):
+        ''' used to print out a deprecation message.'''
+
+        if not removed and not C.DEPRECATION_WARNINGS:
+            return
+
+        if not removed:
+            if version:
+                new_msg = "[DEPRECATION WARNING]: %s. This feature will be removed in version %s." % (msg, version)
+            else:
+                new_msg = "[DEPRECATION WARNING]: %s. This feature will be removed in a future release." % (msg)
+            new_msg += " Deprecation warnings can be disabled by setting deprecation_warnings=False in ansible.cfg.\n\n"
         else:
-            tty_size = 0
-        self.columns = max(79, tty_size - 1)
+            raise AnsibleError("[DEPRECATED]: %s.\nPlease update your playbooks." % msg)
+
+        wrapped = textwrap.wrap(new_msg, self.columns, drop_whitespace=False)
+        new_msg = "\n".join(wrapped) + "\n"
+
+        if new_msg not in self._deprecations:
+            self.display(new_msg.strip(), color=C.COLOR_DEPRECATE, stderr=True)
+            self._deprecations.add(new_msg)
+
+    def warning(self, msg, formatted=False):
+
+        if not formatted:
+            new_msg = "\n[WARNING]: %s" % msg
+            wrapped = textwrap.wrap(new_msg, self.columns)
+            new_msg = "\n".join(wrapped) + "\n"
+        else:
+            new_msg = "\n[WARNING]: \n%s" % msg
+
+        if new_msg not in self._warns:
+            self.display(new_msg, color=C.COLOR_WARN, stderr=True)
+            self._warns.add(new_msg)
+
+    def system_warning(self, msg):
+        if C.SYSTEM_WARNINGS:
+            self.warning(msg)
+
+    def error(self, msg, wrap_text=True):
+        if wrap_text:
+            new_msg = u"\n[ERROR]: %s" % msg
+            wrapped = textwrap.wrap(new_msg, self.columns)
+            new_msg = u"\n".join(wrapped) + u"\n"
+        else:
+            new_msg = u"ERROR! %s" % msg
+        if new_msg not in self._errors:
+            self.display(new_msg, color=C.COLOR_ERROR, stderr=True)
+            self._errors.add(new_msg)

@@ -43,7 +43,7 @@ from ansible.module_utils._text import to_text
 
 class LastResort(object):
     # OUTPUT OF LAST RESORT
-    def display(self, msg, log_only=None):
+    def notice(self, msg, log_only=None):
         print(msg, file=sys.stderr)
 
     def error(self, msg, wrap_text=None):
@@ -101,7 +101,7 @@ if __name__ == '__main__':
             args = [to_text(a, errors='surrogate_or_strict') for a in sys.argv]
         except UnicodeError:
             display.error('Command line args are not in utf-8, unable to continue.  Ansible currently only understands utf-8')
-            display.display(u"The full traceback was:\n\n%s" % to_text(traceback.format_exc()))
+            display.notice(u"The full traceback was:\n\n%s" % to_text(traceback.format_exc()))
             exit_code = 6
         else:
             cli = mycli(args)
@@ -139,9 +139,9 @@ if __name__ == '__main__':
                 if to_text(e) != why:
                     display.vvv('\noriginal msg: %s' % why)
         else:
-            display.display("to see the full traceback, use -vvv")
+            display.notice("to see the full traceback, use -vvv")
             log_only = True
-        display.display(u"the full traceback was:\n\n%s" % to_text(traceback.format_exc()), log_only=log_only)
+        display.notice(u"the full traceback was:\n\n%s" % to_text(traceback.format_exc()), log_only=log_only)
         exit_code = 250
     finally:
         # Remove ansible tempdir

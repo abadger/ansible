@@ -132,7 +132,7 @@ class PlaybookCLI(CLI):
         if isinstance(results, list):
             for p in results:
 
-                display.display('\nplaybook: %s' % p['playbook'])
+                display.notice('\nplaybook: %s' % p['playbook'])
                 for idx, play in enumerate(p['plays']):
                     if play._included_path is not None:
                         loader.set_basedir(play._included_path)
@@ -150,7 +150,7 @@ class PlaybookCLI(CLI):
                         for host in playhosts:
                             msg += "\n      %s" % host
 
-                    display.display(msg)
+                    display.notice(msg)
 
                     all_tags = set()
                     if self.options.listtags or self.options.listtasks:
@@ -192,7 +192,7 @@ class PlaybookCLI(CLI):
                             cur_tags.sort()
                             taskmsg += "      TASK TAGS: [%s]\n" % ', '.join(cur_tags)
 
-                        display.display(taskmsg)
+                        display.notice(taskmsg)
 
             return 0
         else:

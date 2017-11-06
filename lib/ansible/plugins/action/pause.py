@@ -22,8 +22,8 @@ import signal
 import termios
 import time
 import tty
-
 from os import isatty
+
 from ansible.errors import AnsibleError
 from ansible.module_utils.six import PY3
 from ansible.module_utils._text import to_text
@@ -132,15 +132,19 @@ class ActionModule(ActionBase):
                 signal.alarm(seconds)
 
                 # show the timer and control prompts
-                display.display("Pausing for %d seconds%s" % (seconds, echo_prompt))
-                display.display("(ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)\r"),
+                display.notice("Pausing for %d seconds%s" % (seconds, echo_prompt))
+                display.notice("(ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)\r"),
 
                 # show the prompt specified in the task
                 if 'prompt' in self._task.args:
-                    display.display(prompt)
+                    # We print the prompt via display's helpers but retrieve the input our own way as we
+                    # need to handle aborting the prompt
+                    display.output.print_prompt(prompt)
 
             else:
-                display.display(prompt)
+                # We print the prompt via display's helpers but retrieve the input our own way as we
+                # need to handle aborting the prompt
+                display.output.print_prompt(prompt)
 
             # save the attributes on the existing (duped) stdin so
             # that we can restore them later after we set raw mode
