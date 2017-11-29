@@ -36,6 +36,7 @@ class ShellBase(AnsiblePlugin):
         super(ShellBase, self).__init__()
 
         self.env = {}
+        self.tempdir = None
 
     def set_options(self, task_keys=None, var_options=None, direct=None):
 
@@ -51,18 +52,15 @@ class ShellBase(AnsiblePlugin):
                 )
             )
 
-        if self.get_option('remote_temp'):
-            self._set_temp(self.get_option('remote_temp'))
+        # set env
+        self.env.update(self.get_option('environment'))
 
-    def _set_temp(self, tmpdir):
-
-        # set tmpdir for modules to use
-        self.env.update({'TMPDIR': tmpdir,
-                         'TEMP': tmpdir,
-                         'TMP': tmpdir})
+        # always set tempdir
+        self.tempdir = self.get_option('remote_temp')
 
     def env_prefix(self, **kwargs):
         env = self.env.copy()
+        env['ANSIBLE_REMOTE_TEMP'] = self.tempdir
         env.update(kwargs)
         return ' '.join(['%s=%s' % (k, shlex_quote(text_type(v))) for k, v in env.items()])
 
@@ -130,7 +128,7 @@ class ShellBase(AnsiblePlugin):
                 basetmpdir = self.get_option('system_temps')[0]
         else:
             if tmpdir is None:
-                basetmpdir = self.get_option('remote_temp')
+                basetmpdir = self.tempdir
             else:
                 basetmpdir = tmpdir
 
@@ -144,9 +142,6 @@ class ShellBase(AnsiblePlugin):
         if mode:
             tmp_umask = 0o777 & ~mode
             cmd = '%s umask %o %s %s %s' % (self._SHELL_GROUP_LEFT, tmp_umask, self._SHELL_AND, cmd, self._SHELL_GROUP_RIGHT)
-
-        # ensure we use same tmpdir for subsequent commands
-        self._set_temp(basetmpdir)
 
         return cmd
 
@@ -166,7 +161,7 @@ class ShellBase(AnsiblePlugin):
                 user_home_path = shlex_quote(user_home_path)
         return 'echo "%s\t%spwd%s"' % (user_home_path, self._SHELL_SUB_LEFT, self._SHELL_SUB_RIGHT)
 
-    def build_module_command(self, env_string, shebang, cmd, arg_path=None, rm_tmp=None):
+    def build_module_command(self, env_string, shebang, cmd, arg_path=None):
         # don't quote the cmd if it's an empty string, because this will break pipelining mode
         if cmd.strip() != '':
             cmd = shlex_quote(cmd)
@@ -180,8 +175,6 @@ class ShellBase(AnsiblePlugin):
         if arg_path is not None:
             cmd_parts.append(arg_path)
         new_cmd = " ".join(cmd_parts)
-        if rm_tmp:
-            new_cmd = '%s; rm -rf "%s" %s' % (new_cmd, rm_tmp, self._SHELL_REDIRECT_ALLNULL)
         return new_cmd
 
     def append_command(self, cmd, cmd_to_append):

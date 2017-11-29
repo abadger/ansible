@@ -395,12 +395,10 @@ class TestActionBase(unittest.TestCase):
         mock_task.args = dict(a=1, b=2, c=3)
 
         # create a mock connection, so we don't actually try and connect to things
-        def build_module_command(env_string, shebang, cmd, arg_path=None, rm_tmp=None):
+        def build_module_command(env_string, shebang, cmd, arg_path=None):
             to_run = [env_string, cmd]
             if arg_path:
                 to_run.append(arg_path)
-            if rm_tmp:
-                to_run.append(rm_tmp)
             return " ".join(to_run)
 
         mock_connection = MagicMock()

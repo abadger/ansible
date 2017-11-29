@@ -1705,8 +1705,10 @@ Function Run($payload) {
 
 '''  # end async_watchdog
 
+from ansible.plugins import AnsiblePlugin
 
-class ShellModule(object):
+
+class ShellModule(AnsiblePlugin):
 
     # Common shell filenames that this plugin handles
     # Powershell is handled differently.  It's selected when winrm is the
@@ -1835,7 +1837,7 @@ class ShellModule(object):
         ''' % dict(path=path)
         return self._encode_script(script)
 
-    def build_module_command(self, env_string, shebang, cmd, arg_path=None, rm_tmp=None):
+    def build_module_command(self, env_string, shebang, cmd, arg_path=None):
         # pipelining bypass
         if cmd == '':
             return '-'
@@ -1890,10 +1892,6 @@ class ShellModule(object):
                 Exit 1
             }
         ''' % (env_string, ' '.join(cmd_parts))
-        if rm_tmp:
-            rm_tmp = self._escape(self._unquote(rm_tmp))
-            rm_cmd = 'Remove-Item "%s" -Force -Recurse -ErrorAction SilentlyContinue' % rm_tmp
-            script = '%s\nFinally { %s }' % (script, rm_cmd)
         return self._encode_script(script, preserve_rc=False)
 
     def wrap_for_exec(self, cmd):

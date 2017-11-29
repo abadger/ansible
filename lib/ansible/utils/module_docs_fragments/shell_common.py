@@ -20,7 +20,7 @@ options:
   system_temps:
     description:
        - List of valid system temporary directories for Ansible to choose when it cannot use ``remote_temp``, normally due to permission issues.
-    default: [ /tmp, /var/tmp ]
+    default: [ /var/tmp, /tmp ]
     type: list
     env: [{name: ANSIBLE_SYSTEM_TMPS}]
     ini:
@@ -51,4 +51,9 @@ options:
         key: module_lang
     vars:
       - name: ansible_module_lang
+  environment:
+    type: dict
+    default: {}
+    description:
+      - dictionary of environment variables and their values to use when executing commands.
 """

@@ -306,7 +306,7 @@ if __name__ == '__main__':
         ANSIBALLZ_PARAMS = ANSIBALLZ_PARAMS.encode('utf-8')
     try:
         # this temp path will be under the 'remote_tmp', in it's own subdir
-        temp_path = tempfile.mkdtemp(prefix='ansiballz_')
+        temp_path = tempfile.mkdtemp(prefix='ansiballz_', dir=(os.environ.get('ANSIBLE_REMOTE_TEMP') or None))
 
         zipped_mod = os.path.join(temp_path, 'ansible_modlib.zip')
         modlib = open(zipped_mod, 'wb')

@@ -30,7 +30,8 @@ from ansible.module_utils.six import string_types
 from ansible.parsing.yaml.dumper import AnsibleDumper
 from ansible.plugins.loader import module_loader, action_loader, lookup_loader, callback_loader, cache_loader, \
     vars_loader, connection_loader, strategy_loader, inventory_loader, shell_loader, fragment_loader
-from ansible.utils import plugin_docs
+from ansible.utils.plugin_docs import BLACKLIST, get_docstring
+
 try:
     from __main__ import display
 except ImportError:
@@ -148,7 +149,6 @@ class DocCLI(CLI):
         # process command line list
         text = ''
         for plugin in self.args:
-
             try:
                 # if the plugin lives in a non-python file (eg, win_X.ps1), require the corresponding python file for docs
                 filename = loader.find_plugin(plugin, mod_type='.py', ignore_deprecated=True, check_aliases=True)
@@ -160,7 +160,7 @@ class DocCLI(CLI):
                     continue
 
                 try:
-                    doc, plainexamples, returndocs, metadata = plugin_docs.get_docstring(filename, fragment_loader, verbose=(self.options.verbosity > 0))
+                    doc, plainexamples, returndocs, metadata = get_docstring(filename, fragment_loader, verbose=(self.options.verbosity > 0))
                 except:
                     display.vvv(traceback.format_exc())
                     display.error("%s %s has a documentation error formatting or is missing documentation." % (plugin_type, plugin))
@@ -231,7 +231,7 @@ class DocCLI(CLI):
             plugin = os.path.splitext(plugin)[0]  # removes the extension
             plugin = plugin.lstrip('_')  # remove underscore from deprecated plugins
 
-            if plugin not in plugin_docs.BLACKLIST.get(bkey, ()):
+            if plugin not in BLACKLIST.get(bkey, ()):
                 self.plugin_list.add(plugin)
                 display.vvvv("Added %s" % plugin)
 
@@ -256,7 +256,7 @@ class DocCLI(CLI):
 
                 doc = None
                 try:
-                    doc, plainexamples, returndocs, metadata = plugin_docs.get_docstring(filename, fragment_loader)
+                    doc, plainexamples, returndocs, metadata = get_docstring(filename, fragment_loader)
                 except:
                     display.warning("%s has a documentation formatting error" % plugin)
 

@@ -41,7 +41,7 @@ class ShellModule(ShModule):
         env.update(kwargs)
         return ' '.join(['set -lx %s %s;' % (k, shlex_quote(text_type(v))) for k, v in env.items()])
 
-    def build_module_command(self, env_string, shebang, cmd, arg_path=None, rm_tmp=None):
+    def build_module_command(self, env_string, shebang, cmd, arg_path=None):
         # don't quote the cmd if it's an empty string, because this will break pipelining mode
         if cmd.strip() != '':
             cmd = shlex_quote(cmd)
@@ -49,8 +49,6 @@ class ShellModule(ShModule):
         if arg_path is not None:
             cmd_parts.append(arg_path)
         new_cmd = " ".join(cmd_parts)
-        if rm_tmp:
-            new_cmd = 'begin ; %s; rm -rf "%s" %s ; end' % (new_cmd, rm_tmp, self._SHELL_REDIRECT_ALLNULL)
         return new_cmd
 
     def checksum(self, path, python_interp):

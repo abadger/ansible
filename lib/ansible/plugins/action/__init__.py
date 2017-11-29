@@ -653,6 +653,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         remote_module_path = None
         args_file_path = None
         remote_files = []
+        created_tmp = False
 
         # if a module name was not specified for this execution, use the action from the task
         if module_name is None:
@@ -673,6 +674,8 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             # we might need remote tmp dir
             if not tmp or 'tmp' not in tmp:
                 tmp = self._make_tmp_path()
+                created_tmp = True
+            self._connection._shell.tempdir = tmp
 
             remote_module_filename = self._connection._shell.get_remote_filename(module_path)
             remote_module_path = self._connection._shell.join_path(tmp, remote_module_filename)
@@ -749,14 +752,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             else:
                 cmd = remote_module_path
 
-            rm_tmp = None
-
-            if self._should_remove_tmp_path(tmp) and not persist_files and delete_remote_tmp:
-                if not self._play_context.become or self._play_context.become_user == 'root':
-                    # not sudoing or sudoing to root, so can cleanup files in the same step
-                    rm_tmp = tmp
-
-            cmd = self._connection._shell.build_module_command(environment_string, shebang, cmd, arg_path=args_file_path, rm_tmp=rm_tmp).strip()
+            cmd = self._connection._shell.build_module_command(environment_string, shebang, cmd, arg_path=args_file_path).strip()
 
         # Fix permissions of the tmp path and tmp files. This should be called after all files have been transferred.
         if remote_files:
@@ -772,14 +768,10 @@ class ActionBase(with_metaclass(ABCMeta, object)):
 
         # NOTE: INTERNAL KEYS ONLY ACCESSIBLE HERE
         # get internal info before cleaning
-        tmpdir_delete = (not data.pop("_ansible_suppress_tmpdir_delete", False) and wrap_async)
+        tmpdir_delete = not data.pop("_ansible_suppress_tmpdir_delete", False)
 
         # remove internal keys
         remove_internal_keys(data)
-
-        # cleanup tmp?
-        if (self._play_context.become and self._play_context.become_user != 'root') and not persist_files and delete_remote_tmp or tmpdir_delete:
-            self._remove_tmp_path(tmp)
 
         # FIXME: for backwards compat, figure out if still makes sense
         if wrap_async:
@@ -794,6 +786,14 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             # if the value is 'False', a default won't catch it.
             txt = data.get('stderr', None) or u''
             data['stderr_lines'] = txt.splitlines()
+
+        # cleanup tmp?
+        if created_tmp \
+           and (self._play_context.become and self._play_context.become_user != 'root') \
+           and not persist_files \
+           and delete_remote_tmp\
+           and (not wrap_async or tmpdir_delete):  # its not async or async is not suppressing delete
+            self._remove_tmp_path(tmp)
 
         display.debug("done with _execute_module (%s, %s)" % (module_name, module_args))
         return data
