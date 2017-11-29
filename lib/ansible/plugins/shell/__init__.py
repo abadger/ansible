@@ -60,7 +60,6 @@ class ShellBase(AnsiblePlugin):
         self.env.update({'TMPDIR': tmpdir,
                          'TEMP': tmpdir,
                          'TMP': tmpdir})
-        self.set_option('remote_temp', tmpdir)
 
     def env_prefix(self, **kwargs):
         env = self.env.copy()
@@ -146,9 +145,8 @@ class ShellBase(AnsiblePlugin):
             tmp_umask = 0o777 & ~mode
             cmd = '%s umask %o %s %s %s' % (self._SHELL_GROUP_LEFT, tmp_umask, self._SHELL_AND, cmd, self._SHELL_GROUP_RIGHT)
 
-        # ensure we use same tmpdir from now on
-        if basetmpdir != self.get_option('remote_temp'):
-            self._set_temp(basetmpdir)
+        # ensure we use same tmpdir for subsequent commands
+        self._set_temp(basetmpdir)
 
         return cmd
 
