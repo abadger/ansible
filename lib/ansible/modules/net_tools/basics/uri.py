@@ -386,6 +386,7 @@ def main():
 
     module = AnsibleModule(
         argument_spec=argument_spec,
+        # TODO: Remove check_invalid_arguments in 2.9
         check_invalid_arguments=False,
         add_file_common_args=True
     )
@@ -411,15 +412,16 @@ def main():
         if 'content-type' not in lower_header_keys:
             dict_headers['Content-Type'] = 'application/json'
 
+    # TODO: Deprecated section.  Remove in Ansible 2.9
     # Grab all the http headers. Need this hack since passing multi-values is
     # currently a bit ugly. (e.g. headers='{"Content-Type":"application/json"}')
     for key, value in six.iteritems(module.params):
         if key.startswith("HEADER_"):
-            module.deprecate('Supplying headers via HEADER_* is deprecated and '
-                             'will be removed in a future version. Please use '
-                             '`headers` to supply headers for the request')
+            module.deprecate('Supplying headers via HEADER_* is deprecated. Please use `headers` to'
+                             ' supply headers for the request', version='2.9')
             skey = key.replace("HEADER_", "")
             dict_headers[skey] = value
+    # End deprecated section
 
     if creates is not None:
         # do not run the command if the line contains creates=filename
