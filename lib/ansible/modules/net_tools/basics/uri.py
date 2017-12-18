@@ -98,11 +98,8 @@ options:
     default: 30
   HEADER_:
     description:
-      - Any parameter starting with "HEADER_" is a sent with your request as a header.
-        For example, HEADER_Content-Type="application/json" would send the header
-        "Content-Type" along with your request with a value of "application/json".
-        This option is deprecated as of C(2.1) and may be removed in a future
-        release. Use I(headers) instead.
+      - Any parameter starting with "HEADER_" was sent as an http header with the request.  This was
+      - removed in Ansible-2.9
   headers:
     description:
         - Add custom HTTP headers to a request in the format of a YAML hash. As
@@ -386,8 +383,6 @@ def main():
 
     module = AnsibleModule(
         argument_spec=argument_spec,
-        # TODO: Remove check_invalid_arguments in 2.9
-        check_invalid_arguments=False,
         add_file_common_args=True
     )
 
@@ -411,17 +406,6 @@ def main():
         lower_header_keys = [key.lower() for key in dict_headers]
         if 'content-type' not in lower_header_keys:
             dict_headers['Content-Type'] = 'application/json'
-
-    # TODO: Deprecated section.  Remove in Ansible 2.9
-    # Grab all the http headers. Need this hack since passing multi-values is
-    # currently a bit ugly. (e.g. headers='{"Content-Type":"application/json"}')
-    for key, value in six.iteritems(module.params):
-        if key.startswith("HEADER_"):
-            module.deprecate('Supplying headers via HEADER_* is deprecated. Please use `headers` to'
-                             ' supply headers for the request', version='2.9')
-            skey = key.replace("HEADER_", "")
-            dict_headers[skey] = value
-    # End deprecated section
 
     if creates is not None:
         # do not run the command if the line contains creates=filename

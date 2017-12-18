@@ -234,37 +234,10 @@ def main():
             zfs_properties=dict(type='dict', default={}),
         ),
         supports_check_mode=True,
-        # Remove this in Ansible 2.9
-        check_invalid_arguments=False,
     )
 
     state = module.params.pop('state')
     name = module.params.pop('name')
-
-    # The following is deprecated.  Remove in Ansible 2.9
-    # Get all valid zfs-properties
-    properties = dict()
-    for prop, value in module.params.items():
-        # All freestyle params are zfs properties
-        if prop not in module.argument_spec:
-            if isinstance(value, bool):
-                if value is True:
-                    properties[prop] = 'on'
-                else:
-                    properties[prop] = 'off'
-            else:
-                properties[prop] = value
-
-    if properties:
-        module.deprecate('Passing zfs properties as arbitrary parameters to the zfs module is'
-                         ' deprecated.  Sent them as a dictionary in the zfs_properties parameter'
-                         ' instead.', version='2.9')
-        # Merge, giving the module_params precedence
-        for prop, value in module.params['zfs_properties'].items():
-            properites[prop] = value
-
-        module.params['zfs_properties'] = properties
-    # End deprecated section
 
     # Reverse the boolification of zfs properties
     for prop, value in module.params['zfs_properties'].items():
@@ -275,7 +248,6 @@ def main():
                 module.params['zfs_properties'][prop] = 'off'
         else:
             module.params['xfs_properties'][prop] = value
-
 
     result = dict(
         name=name,
