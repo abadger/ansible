@@ -309,9 +309,8 @@ if __name__ == '__main__':
         # this temp path will be under the 'remote_tmp', in it's own subdir
         tempdir = os.environ.get('ANSIBLE_REMOTE_TEMP', None) or None
         if tempdir:
-            b_tmp = to_bytes(tempdir)
-            if not os.path.exists(b_tmp):
-                os.makedirs(b_tmp)
+            if not os.path.exists(tempdir):
+                os.makedirs(tempdir)
                 remove_tempdir = True
         temp_path = tempfile.mkdtemp(prefix='ansiballz_', dir=tempdir)
 
