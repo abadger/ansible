@@ -31,6 +31,8 @@ _USER_HOME_PATH_RE = re.compile(r'^~[_.A-Za-z0-9][-_.A-Za-z0-9]*$')
 
 class ShellBase(AnsiblePlugin):
 
+    HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)?')
+
     def __init__(self):
 
         super(ShellBase, self).__init__()
@@ -148,8 +150,8 @@ class ShellBase(AnsiblePlugin):
     def expand_user(self, user_home_path):
         ''' Return a command to expand tildes in a path
 
-        It can be either "~" or "~username".  We use the POSIX definition of
-        a username:
+        It can be either "~" or "~username". We just ignore $HOME
+        We use the POSIX definition of a username:
             http://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap03.html#tag_03_426
             http://pubs.opengroup.org/onlinepubs/000095399/basedefs/xbd_chap03.html#tag_03_276
         '''

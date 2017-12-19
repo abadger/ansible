@@ -21,6 +21,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import os
+import re
 
 from ansible import constants as C
 from ansible.compat.tests import unittest
@@ -234,6 +235,8 @@ class TestActionBase(unittest.TestCase):
         mock_connection.transport = 'ssh'
         mock_connection._shell.mkdtemp.return_value = 'mkdir command'
         mock_connection._shell.join_path.side_effect = os.path.join
+        mock_connection._shell.get_option.return_value = '~/.ansible/tmp'
+        mock_connection._shell.HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)?')
 
         # we're using a real play context here
         play_context = PlayContext()

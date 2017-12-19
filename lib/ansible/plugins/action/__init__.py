@@ -533,23 +533,14 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         ''' takes a remote path and performs tilde/$HOME expansion on the remote host '''
 
         expanded = path
+        print(path)
+        m = self._connection._shell.HOMES_RE.match(path)
 
-        if path and path.startswith(('~', '$HOME', '"~', '"$HOME', "'~", "'$HOME")):
+        if m is not None:
+            quote, expand_path, rest = m.groups()
 
-            # allow patshep override for windows and other 'fun' systems
-            if pathsep is None:
-                pathsep = os.path.sep
-
-            split_path = path.split(pathsep, 1)
-            expand_path = split_path[0]
-
-            quote = False
-            if expand_path.startswith(('"', "'")):
-                quote = expand_path[0]
-                expand_path = expand_path[1:]
-
-            # use become user if in that context
-            if sudoable and expand_path in ('~', '"~') and self._play_context.become and self._play_context.become_user:
+            # if become and ~, tailor the path
+            if '~' in expand_path and sudoable and self._play_context.become and self._play_context.become_user:
                 expand_path = '~%s' % self._play_context.become_user
 
             # use shell to construct appropriate command and execute
@@ -567,14 +558,17 @@ class ActionBase(with_metaclass(ABCMeta, object)):
                 # Something went wrong trying to expand the path remotely. Try using pwd, if not, return the original string
                 if pwd:
                     expanded = pwd
-                    quote = False
-            elif len(split_path) > 1:
-                expanded = self._connection._shell.join_path(initial_fragment, *split_path[1:])
+                    quote = None
+            elif len(expand_path) > 1:
+                expanded = self._connection._shell.join_path(initial_fragment, *expand_path[1:])
             else:
                 expanded = initial_fragment
 
+            if rest:
+                expanded = ''.join([expanded, rest])
+
             if quote:
-                expanded = quote + expanded
+                expanded = ''.join([quote, expanded, quote])
 
         return expanded
 
