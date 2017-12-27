@@ -28,6 +28,16 @@ options:
         key: system_tmps
     vars:
       - name: ansible_system_tmps
+  async_dir:
+    description:
+       - Directory in which ansible will keep async job inforamtion
+    default: '~/.ansible_async'
+    env: [{name: ANSIBLE_ASYNC_DIR}]
+    ini:
+      - section: defaults
+        key: async_dir
+    vars:
+      - name: ansible_async_dir
   set_module_language:
     default: False
     description: Controls if we set locale for modules when executing on the target.
