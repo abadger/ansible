@@ -99,6 +99,11 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         elif self._task.async_val and self._play_context.check_mode:
             raise AnsibleActionFail('check mode and async cannot be used on same task.')
 
+        if tmp:
+            self._connection._shell.tempdir = tmp
+        elif self._early_needs_tmp_path():
+            self._make_tmp_path()
+
         return result
 
     def _remote_file_exists(self, path):
@@ -286,7 +291,6 @@ class ActionBase(with_metaclass(ABCMeta, object)):
 
     def _should_remove_tmp_path(self, tmp_path):
         '''Determine if temporary path should be deleted or kept by user request/config'''
-
         return tmp_path and self._cleanup_remote_tmp and not C.DEFAULT_KEEP_REMOTE_FILES and "-tmp-" in tmp_path
 
     def _remove_tmp_path(self, tmp_path):
@@ -647,7 +651,6 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         remote_module_path = None
         args_file_path = None
         remote_files = []
-        created_tmp = False
 
         # if a module name was not specified for this execution, use the action from the task
         if module_name is None:
@@ -666,10 +669,11 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         if not self._is_pipelining_enabled(module_style, wrap_async):
 
             # we might need remote tmp dir
-            if not tmp or 'tmp' not in tmp:
-                tmp = self._make_tmp_path()
-                created_tmp = True
-            self._connection._shell.tempdir = tmp
+            if not tmp:
+                if not self._connection._shell.tempdir or 'tmp' not in tmp:
+                    tmp = self._make_tmp_path()
+                else:
+                    tmp = self._connection._shell.tempdir
 
             remote_module_filename = self._connection._shell.get_remote_filename(module_path)
             remote_module_path = self._connection._shell.join_path(tmp, remote_module_filename)
@@ -762,7 +766,8 @@ class ActionBase(with_metaclass(ABCMeta, object)):
 
         # NOTE: INTERNAL KEYS ONLY ACCESSIBLE HERE
         # get internal info before cleaning
-        tmpdir_delete = not data.pop("_ansible_suppress_tmpdir_delete", False)
+        if data.pop("_ansible_suppress_tmpdir_delete", False):
+            self._cleanup_remote_tmp = False
 
         # remove internal keys
         remove_internal_keys(data)
@@ -780,14 +785,6 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             # if the value is 'False', a default won't catch it.
             txt = data.get('stderr', None) or u''
             data['stderr_lines'] = txt.splitlines()
-
-        # cleanup tmp?
-        if created_tmp \
-           and (self._play_context.become and self._play_context.become_user != 'root') \
-           and not persist_files \
-           and delete_remote_tmp\
-           and (not wrap_async or tmpdir_delete):  # its not async or async is not suppressing delete
-            self._remove_tmp_path(tmp)
 
         display.debug("done with _execute_module (%s, %s)" % (module_name, module_args))
         return data
