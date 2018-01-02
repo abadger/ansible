@@ -57,9 +57,6 @@ class ShellBase(AnsiblePlugin):
         # set env
         self.env.update(self.get_option('environment'))
 
-        # always set tempdir
-        self.tempdir = self.get_option('remote_temp')
-
     def env_prefix(self, **kwargs):
         env = self.env.copy()
         env['ANSIBLE_REMOTE_TEMP'] = self.tempdir
@@ -130,7 +127,7 @@ class ShellBase(AnsiblePlugin):
                 basetmpdir = self.get_option('system_temps')[0]
         else:
             if tmpdir is None:
-                basetmpdir = self.tempdir
+                basetmpdir = self.get_option('remote_temp')
             else:
                 basetmpdir = tmpdir
 

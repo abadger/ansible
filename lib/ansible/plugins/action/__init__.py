@@ -99,9 +99,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         elif self._task.async_val and self._play_context.check_mode:
             raise AnsibleActionFail('check mode and async cannot be used on same task.')
 
-        if tmp:
-            self._connection._shell.tempdir = tmp
-        elif self._early_needs_tmp_path():
+        if not tmp and self._early_needs_tmp_path():
             self._make_tmp_path()
 
         return result
@@ -287,6 +285,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         if rc == '/':
             raise AnsibleError('failed to resolve remote temporary directory from %s: `%s` returned empty string' % (basefile, cmd))
 
+        self._connection._shell.tempdir = rc
         return rc
 
     def _should_remove_tmp_path(self, tmp_path):
