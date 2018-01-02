@@ -545,6 +545,6 @@ class ActionModule(ActionBase):
             result.update(dict(dest=dest, src=source, changed=changed))
 
         # Delete tmp path
-        self._remove_tmp_path(self._connection._shell.tmpdir)
+        self._remove_tmp_path(self._connection._shell.tempdir)
 
         return result

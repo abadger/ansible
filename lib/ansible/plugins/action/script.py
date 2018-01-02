@@ -125,6 +125,6 @@ class ActionModule(ActionBase):
         except AnsibleAction as e:
             result.update(e.result)
         finally:
-            self._remove_tmp_path(self._connection._shell.tmpdir)
+            self._remove_tmp_path(self._connection._shell.tempdir)
 
         return result
