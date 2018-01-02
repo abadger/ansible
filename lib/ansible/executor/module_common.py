@@ -304,14 +304,9 @@ if __name__ == '__main__':
     ANSIBALLZ_PARAMS = %(params)s
     if PY3:
         ANSIBALLZ_PARAMS = ANSIBALLZ_PARAMS.encode('utf-8')
-    remove_tempdir = False
     try:
         # this temp path will be under the 'remote_tmp', in it's own subdir
         tempdir = os.environ.get('ANSIBLE_REMOTE_TEMP', None) or None
-        if tempdir:
-            if not os.path.exists(tempdir):
-                os.makedirs(tempdir)
-                remove_tempdir = True
         temp_path = tempfile.mkdtemp(prefix='ansiballz_', dir=tempdir)
 
         zipped_mod = os.path.join(temp_path, 'ansible_modlib.zip')
@@ -348,12 +343,9 @@ if __name__ == '__main__':
             exitcode = invoke_module(module, zipped_mod, ANSIBALLZ_PARAMS)
     finally:
         try:
-            if remove_tempdir:
-                shutil.rmtree(tempdir)
-            else:
-                shutil.rmtree(temp_path)
+            shutil.rmtree(temp_path)
         except (NameError, OSError):
-            # tempdir creation probably failed
+            # temp creation probably failed
             pass
     sys.exit(exitcode)
 '''

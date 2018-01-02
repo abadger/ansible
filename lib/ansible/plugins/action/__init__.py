@@ -670,7 +670,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
 
             # we might need remote tmp dir
             if not tmp:
-                if not self._connection._shell.tempdir or 'tmp' not in tmp:
+                if not self._connection._shell.tempdir or tmp is None or 'tmp' not in tmp:
                     tmp = self._make_tmp_path()
                 else:
                     tmp = self._connection._shell.tempdir
