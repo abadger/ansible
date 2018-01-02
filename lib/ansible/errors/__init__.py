@@ -276,7 +276,7 @@ class AnsibleActionSkip(AnsibleAction):
 class AnsibleActionFail(AnsibleAction):
     ''' an action runtime failure'''
     def __init__(self, message="", obj=None, show_content=True, suppress_extended_error=False, orig_exc=None, result=None):
-        super(AnsibleActionSkip, self).__init__(message=message, obj=obj, show_content=show_content,
+        super(AnsibleActionFail, self).__init__(message=message, obj=obj, show_content=show_content,
                                                 suppress_extended_error=suppress_extended_error, orig_exc=orig_exc, result=result)
         self.result.update({'failed': True, 'msg': message})
 
