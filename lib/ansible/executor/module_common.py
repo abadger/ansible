@@ -305,9 +305,10 @@ if __name__ == '__main__':
     if PY3:
         ANSIBALLZ_PARAMS = ANSIBALLZ_PARAMS.encode('utf-8')
     try:
-        # this temp path will be under the 'remote_tmp', in it's own subdir
-        tempdir = os.environ.get('ANSIBLE_REMOTE_TEMP', None) or None
-        temp_path = tempfile.mkdtemp(prefix='ansiballz_', dir=tempdir)
+        # There's a race condition with the controller removing the
+        # remote_tmpdir and this module executing under async.  So we cannot
+        # store this in remote_tmpdir (use system tempdir instead)
+        temp_path = tempfile.mkdtemp(prefix='ansible_')
 
         zipped_mod = os.path.join(temp_path, 'ansible_modlib.zip')
         modlib = open(zipped_mod, 'wb')
@@ -345,7 +346,7 @@ if __name__ == '__main__':
         try:
             shutil.rmtree(temp_path)
         except (NameError, OSError):
-            # temp creation probably failed
+            # tempdir creation probably failed
             pass
     sys.exit(exitcode)
 '''
