@@ -239,7 +239,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         if remote_user is None:
             remote_user = self._play_context.remote_user
 
-        admin_users = self._connection._shell.get_option('admin_users') + (remote_user,)
+        admin_users = self._connection._shell.get_option('admin_users') + [remote_user]
 
         # deal with tmpdir creation
         basefile = 'ansible-tmp-%s-%s' % (time.time(), random.randint(0, 2**48))

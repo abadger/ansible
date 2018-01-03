@@ -230,12 +230,22 @@ class TestActionBase(unittest.TestCase):
         # create our fake task
         mock_task = MagicMock()
 
+        def get_shell_opt(opt):
+
+            ret = None
+            if opt == 'admin_users':
+                ret =  ['root', 'toor', 'Administrator']
+            elif opt == 'remote_temp':
+                ret = '~/.ansible/tmp'
+
+            return ret
+
         # create a mock connection, so we don't actually try and connect to things
         mock_connection = MagicMock()
         mock_connection.transport = 'ssh'
         mock_connection._shell.mkdtemp.return_value = 'mkdir command'
         mock_connection._shell.join_path.side_effect = os.path.join
-        mock_connection._shell.get_option.return_value = '~/.ansible/tmp'
+        mock_connection._shell.get_option = get_shell_opt
         mock_connection._shell.HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)?')
 
         # we're using a real play context here
