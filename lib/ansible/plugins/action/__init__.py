@@ -239,9 +239,11 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         if remote_user is None:
             remote_user = self._play_context.remote_user
 
+        admin_users = self._connection._shell.get_option('admin_users') + (remote_user,)
+
         # deal with tmpdir creation
         basefile = 'ansible-tmp-%s-%s' % (time.time(), random.randint(0, 2**48))
-        use_system_tmp = bool(self._play_context.become and self._play_context.become_user not in ('root', remote_user))
+        use_system_tmp = bool(self._play_context.become and self._play_context.become_user not in admin_users)
         tmpdir = self._remote_expand_user(self._connection._shell.get_option('remote_temp'), sudoable=False)
         cmd = self._connection._shell.mkdtemp(basefile=basefile, system=use_system_tmp, tmpdir=tmpdir)
         result = self._low_level_execute_command(cmd, sudoable=False)
@@ -391,7 +393,8 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             # we have a need for it, at which point we'll have to do something different.
             return remote_paths
 
-        if self._play_context.become and self._play_context.become_user and self._play_context.become_user not in ('root', remote_user):
+        admin_users = self._connection._shell.get_option('admin_users')
+        if self._play_context.become and self._play_context.become_user and self._play_context.become_user not in admin_users + (remote_user,):
             # Unprivileged user that's different than the ssh user.  Let's get
             # to work!
 
@@ -418,12 +421,12 @@ class ActionBase(with_metaclass(ABCMeta, object)):
                         raise AnsibleError('Failed to set file mode on remote temporary files (rc: {0}, err: {1})'.format(res['rc'], to_native(res['stderr'])))
 
                 res = self._remote_chown(remote_paths, self._play_context.become_user)
-                if res['rc'] != 0 and remote_user == 'root':
+                if res['rc'] != 0 and remote_user in admin_users:
                     # chown failed even if remove_user is root
-                    raise AnsibleError('Failed to change ownership of the temporary files Ansible needs to create despite connecting as root. '
+                    raise AnsibleError('Failed to change ownership of the temporary files Ansible needs to create despite connecting as a privileged user. '
                                        'Unprivileged become user would be unable to read the file.')
                 elif res['rc'] != 0:
-                    if C.ALLOW_WORLD_READABLE_TMPFILES:
+                    if self._connection._shell('allow_world_readable_temp'):
                         # chown and fs acls failed -- do things this insecure
                         # way only if the user opted in in the config file
                         display.warning('Using world-readable permissions for temporary files Ansible needs to create when becoming an unprivileged user. '
