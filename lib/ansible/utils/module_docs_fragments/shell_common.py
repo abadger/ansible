@@ -90,4 +90,3 @@ options:
       - name: ansible_world_readable_tmpfiles
     version_added: "2.1"
 """
-"""
