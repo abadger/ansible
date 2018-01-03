@@ -234,7 +234,7 @@ class TestActionBase(unittest.TestCase):
 
             ret = None
             if opt == 'admin_users':
-                ret =  ['root', 'toor', 'Administrator']
+                ret = ['root', 'toor', 'Administrator']
             elif opt == 'remote_temp':
                 ret = '~/.ansible/tmp'
 
