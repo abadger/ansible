@@ -394,7 +394,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             return remote_paths
 
         admin_users = self._connection._shell.get_option('admin_users')
-        if self._play_context.become and self._play_context.become_user and self._play_context.become_user not in admin_users + (remote_user,):
+        if self._play_context.become and self._play_context.become_user and self._play_context.become_user not in admin_users + [remote_user]:
             # Unprivileged user that's different than the ssh user.  Let's get
             # to work!
 
