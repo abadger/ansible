@@ -183,6 +183,3 @@ for setting in config.data.get_settings():
 
     set_constant(setting.name, value)
 
-    # speical hack to ensure all local temp files use the configured temp dir by default
-    if setting.name == 'DEFAULT_LOCAL_TMP':
-        os.environ['TEMPDIR'] = os.environ['TEMP'] = os.environ['TMP'] = value
