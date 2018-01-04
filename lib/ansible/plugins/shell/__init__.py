@@ -58,8 +58,7 @@ class ShellBase(AnsiblePlugin):
         self.env.update(self.get_option('environment'))
 
     def env_prefix(self, **kwargs):
-        env.update(kwargs)
-        return ' '.join(['%s=%s' % (k, shlex_quote(text_type(v))) for k, v in env.items()])
+        return ' '.join(['%s=%s' % (k, shlex_quote(text_type(v))) for k, v in kwargs.items()])
 
     def join_path(self, *args):
         return os.path.join(*args)
