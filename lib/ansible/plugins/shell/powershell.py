@@ -11,22 +11,6 @@ DOCUMENTATION = '''
     short_description: Windows Powershell
     description:
       - The only option whne using 'winrm' as a connection plugin
-    options:
-      remote_temp:
-        description:
-          - Temporary directory to use on targets when executing tasks.
-        default: '%%TEMP%%'
-        env:
-          - name: ANSIBLE_REMOTE_TEMP
-          - name: ANSIBLE_PS_REMOTE_TEMP
-        ini:
-          - section: defaults
-            key: remote_tmp
-          - section: defaults
-            key: remote_ps_tmp
-        vars:
-          - name: ansible_remote_tmp
-          - name: ansible_ps_remote_tmp
 '''
 
 import base64
