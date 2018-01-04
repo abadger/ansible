@@ -58,8 +58,6 @@ class ShellBase(AnsiblePlugin):
         self.env.update(self.get_option('environment'))
 
     def env_prefix(self, **kwargs):
-        env = self.env.copy()
-        env['ANSIBLE_REMOTE_TEMP'] = self.tempdir
         env.update(kwargs)
         return ' '.join(['%s=%s' % (k, shlex_quote(text_type(v))) for k, v in env.items()])
 
