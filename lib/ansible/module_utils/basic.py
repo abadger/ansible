@@ -836,9 +836,6 @@ class AnsibleModule(object):
         # set tempdir to remote tmp
         self.tempdir = os.environ.get('ANSIBLE_REMOTE_TEMP', None)
 
-        # set for all tempfile calls
-        tempfile.tempdir = self.tempdir
-
         if add_file_common_args:
             for k, v in FILE_COMMON_ARGUMENTS.items():
                 if k not in self.argument_spec:
