@@ -182,4 +182,3 @@ for setting in config.data.get_settings():
         value = ensure_type(value, setting.name)
 
     set_constant(setting.name, value)
-
