@@ -221,7 +221,7 @@ class ActionModule(ActionBase):
         if self._connection._shell.path_has_trailing_slash(dest):
             dest_file = self._connection._shell.join_path(dest, source_rel)
         else:
-            dest_file = self._connection._shell.join_path(dest)
+            dest_file = dest
 
         # Attempt to get remote file info
         dest_status = self._execute_remote_stat(dest_file, all_vars=task_vars, follow=follow, tmp=tmp, checksum=force)
