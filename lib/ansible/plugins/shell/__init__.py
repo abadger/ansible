@@ -31,7 +31,7 @@ _USER_HOME_PATH_RE = re.compile(r'^~[_.A-Za-z0-9][-_.A-Za-z0-9]*$')
 
 class ShellBase(AnsiblePlugin):
 
-    HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)?')
+    HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)')
 
     def __init__(self):
 
