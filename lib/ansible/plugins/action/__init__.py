@@ -290,7 +290,7 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         self._connection._shell.tempdir = rc
 
         if not use_system_tmp:
-            self._connection._shell.env.update({'ANSIBLE_REMOTE_TEMP': self.tempdir})
+            self._connection._shell.env.update({'ANSIBLE_REMOTE_TEMP': self._connection._shell.tempdir})
         return rc
 
     def _should_remove_tmp_path(self, tmp_path):
