@@ -20,7 +20,7 @@ __metaclass__ = type
 
 import os
 
-from ansible.errors import AnsibleError, AnsibleAction, AnsibleActionFail, AnsibleActionSkipped
+from ansible.errors import AnsibleError, AnsibleAction, AnsibleActionFail, AnsibleActionSkip
 from ansible.module_utils._text import to_text
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.plugins.action import ActionBase
@@ -62,7 +62,7 @@ class ActionModule(ActionBase):
                 # of command executions.
                 creates = self._remote_expand_user(creates)
                 if self._remote_file_exists(creates):
-                    raise AnsibleActionSkipped("skipped, since %s exists" % creates)
+                    raise AnsibleActionSkip("skipped, since %s exists" % creates)
 
             dest = self._remote_expand_user(dest)  # CCTODO: Fix path for Windows hosts.
             source = os.path.expanduser(source)

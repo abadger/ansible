@@ -21,7 +21,7 @@ import os
 import re
 import shlex
 
-from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFail, AnsibleActionSkipped
+from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFail, AnsibleActionSkip
 from ansible.module_utils._text import to_native, to_text
 from ansible.plugins.action import ActionBase
 
@@ -48,7 +48,7 @@ class ActionModule(ActionBase):
                 # and the filename already exists. This allows idempotence
                 # of command executions.
                 if self._remote_file_exists(creates):
-                    raise AnsibleActionSkipped("%s exists, matching creates option" % creates)
+                    raise AnsibleActionSkip("%s exists, matching creates option" % creates)
 
             removes = self._task.args.get('removes')
             if removes:
@@ -56,7 +56,7 @@ class ActionModule(ActionBase):
                 # and the filename does not exist. This allows idempotence
                 # of command executions.
                 if not self._remote_file_exists(removes):
-                    raise AnsibleActionSkipped("%s does not exist, matching removes option" % removes)
+                    raise AnsibleActionSkip("%s does not exist, matching removes option" % removes)
 
             # The chdir must be absolute, because a relative path would rely on
             # remote node behaviour & user config.
