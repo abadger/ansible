@@ -84,7 +84,7 @@ class ActionModule(ActionBase):
 
             if not self._play_context.check_mode:
                 # transfer the file to a remote tmp location
-                tmp_src = self._connection._shell.join_path(tmp, os.path.basename(source))
+                tmp_src = self._connection._shell.join_path(self._connection._shell.tempdir, os.path.basename(source))
 
                 # Convert raw_params to text for the purpose of replacing the script since
                 # parts and tmp_src are both unicode strings and raw_params will be different
@@ -104,8 +104,8 @@ class ActionModule(ActionBase):
                 env_dict = dict()
                 env_string = self._compute_environment_string(env_dict)
                 script_cmd = ' '.join([env_string, target_command])
-
-            if self._play_context.check_mode:
+            else:
+                result['changed'] = True
                 raise _AnsibleActionDone()
 
             script_cmd = self._connection._shell.wrap_for_exec(script_cmd)
