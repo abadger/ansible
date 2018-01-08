@@ -4,13 +4,75 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-DOCUMENTATION = '''
-    name: powershell
-    plugin_type: shell
-    version_added: ""
-    short_description: Windows Powershell
+DOCUMENTATION = r'''
+name: powershell
+plugin_type: shell
+version_added: ""
+short_description: Windows Powershell
+description:
+- The only option whne using 'winrm' as a connection plugin
+options:
+  remote_temp:
     description:
-      - The only option whne using 'winrm' as a connection plugin
+    - Temporary directory to use on targets when copying files to the host or
+      when C(ANSIBLE_KEEP_REMOTE_FILES=1) is set.
+    default: '%TEMP%'
+    env:
+    - name: ANSIBLE_REMOTE_TEMP
+    ini:
+    - section: defaults
+      key: remote_tmp
+    vars:
+    - name: ansible_remote_tmp
+  system_temps:
+    description:
+    - List of valid system temporary directories for Ansible to choose when it
+      cannot use I(remote_temp), normally due to permissions issues.
+    default:
+    - C:\Windows\TEMP
+    type: list
+    env:
+    - name: ANSIBLE_SYSTEM_TMPS
+    ini:
+    - section: defaults
+      key: system_tmps
+    vars:
+    - name: ansible_system_tmps
+  admin_users:
+    description:
+    - List of users to be expected to have admin privileges.
+    type: list
+    default:
+    - Administrator
+    - SYSTEM
+    env:
+    - name: ANSIBLE_ADMIN_USERS
+    ini:
+    - section: defaults
+      key: admin_users
+    vars:
+    - name: ansible_admin_users
+  set_module_language:
+    description:
+    - Controls if we set locale for modules when executing on the target.
+    - Windows only supports C(no) as an option.
+    type: bool
+    default: 'no'
+    choices:
+    - 'no'
+    env:
+    - name: ANSIBLE_MODULE_SET_LOCALE
+    ini:
+    - section: defaults
+      key: module_set_locale
+    vars:
+    - name: ansible_module_set_locale
+  environment:
+    description:
+    - Dictionary of environment variables and their values to use when executing
+      commands.
+    type: dict
+    default: {}
 '''
 
 import base64
@@ -20,6 +82,7 @@ import shlex
 
 from ansible.errors import AnsibleError
 from ansible.module_utils._text import to_bytes, to_text
+from ansible.plugins.shell import ShellBase
 
 
 _common_args = ['PowerShell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Unrestricted']
@@ -1689,10 +1752,8 @@ Function Run($payload) {
 
 '''  # end async_watchdog
 
-from ansible.plugins import AnsiblePlugin
 
-
-class ShellModule(AnsiblePlugin):
+class ShellModule(ShellBase):
 
     # Common shell filenames that this plugin handles
     # Powershell is handled differently.  It's selected when winrm is the
@@ -1766,10 +1827,28 @@ class ShellModule(AnsiblePlugin):
         else:
             return self._encode_script('''Remove-Item "%s" -Force;''' % path)
 
-    def mkdtemp(self, basefile, system=False, mode=None, tmpdir=None):
+    def mkdtemp(self, basefile=None, system=False, mode=None, tmpdir=None):
         basefile = self._escape(self._unquote(basefile))
-        # FIXME: Support system temp path and passed in tmpdir!
-        return self._encode_script('''(New-Item -Type Directory -Path $env:temp -Name "%s").FullName | Write-Host -Separator '';''' % basefile)
+        if system:
+            if tmpdir.startswith(tuple(self.get_option('system_temps'))):
+                basetmpdir = tmpdir
+            else:
+                basetmpdir = self.get_option('system_temps')[0]
+        else:
+            if tmpdir is None:
+                basetmpdir = self.get_option('remote_temp')
+            else:
+                basetmpdir = tmpdir
+
+        # FUTURE: use self.join_path instead currently the quotes and \\ are
+        # breaking things here
+        basetmp = basetmpdir + '\\' + basefile
+        script = '''
+        $tmp_path = [System.Environment]::ExpandEnvironmentVariables("%s")
+        $tmp = New-Item -Type Directory -Path $tmp_path
+        $tmp.FullName | Write-Host -Separator ''
+        ''' % basetmp
+        return self._encode_script(script.strip())
 
     def expand_user(self, user_home_path):
         # PowerShell only supports "~" (not "~username").  Resolve-Path ~ does
