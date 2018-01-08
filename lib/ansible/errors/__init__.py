@@ -281,6 +281,13 @@ class AnsibleActionFail(AnsibleAction):
         self.result.update({'failed': True, 'msg': message})
 
 
-class AnsibleActionDone(AnsibleAction):
+#
+# Warning: We've decided we do not like using exceptions for flow control as this does.  This is
+# something we're going to port to context managers in the future.  Action modules in the Ansible
+# tree can use ths for now and we'll port all of them when we write the context manager.  Third
+# party action modules should *not* use this as we'll be removing it when we create the context
+# manager.
+#
+class _AnsibleActionDone(AnsibleAction):
     ''' an action runtime early exit'''
     pass

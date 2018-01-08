@@ -21,7 +21,7 @@ import os
 import re
 import shlex
 
-from ansible.errors import AnsibleError, AnsibleAction, AnsibleActionDone, AnsibleActionFailed, AnsibleActionSkipped
+from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFailed, AnsibleActionSkipped
 from ansible.module_utils._text import to_native, to_text
 from ansible.plugins.action import ActionBase
 
@@ -106,7 +106,7 @@ class ActionModule(ActionBase):
                 script_cmd = ' '.join([env_string, target_command])
 
             if self._play_context.check_mode:
-                raise AnsibleActionDone()
+                raise _AnsibleActionDone()
 
             script_cmd = self._connection._shell.wrap_for_exec(script_cmd)
 
