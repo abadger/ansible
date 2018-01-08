@@ -26,7 +26,7 @@ import re
 import tempfile
 
 from ansible import constants as C
-from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFailed
+from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFail
 from ansible.module_utils._text import to_native, to_text
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.plugins.action import ActionBase
@@ -99,7 +99,7 @@ class ActionModule(ActionBase):
 
         try:
             if src is None or dest is None:
-                raise AnsibleActionFailed("src and dest are required")
+                raise AnsibleActionFail("src and dest are required")
 
             if boolean(remote_src, strict=False):
                 result.update(self._execute_module(tmp=tmp, task_vars=task_vars))
@@ -108,10 +108,10 @@ class ActionModule(ActionBase):
                 try:
                     src = self._find_needle('files', src)
                 except AnsibleError as e:
-                    raise AnsibleActionFailed(to_native(e))
+                    raise AnsibleActionFail(to_native(e))
 
             if not os.path.isdir(src):
-                raise AnsibleActionFailed(u"Source (%s) is not a directory" % src)
+                raise AnsibleActionFail(u"Source (%s) is not a directory" % src)
 
             _re = None
             if regexp is not None:

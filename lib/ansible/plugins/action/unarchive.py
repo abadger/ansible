@@ -20,7 +20,7 @@ __metaclass__ = type
 
 import os
 
-from ansible.errors import AnsibleError, AnsibleAction, AnsibleActionFailed, AnsibleActionSkipped
+from ansible.errors import AnsibleError, AnsibleAction, AnsibleActionFail, AnsibleActionSkipped
 from ansible.module_utils._text import to_text
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.plugins.action import ActionBase
@@ -48,13 +48,13 @@ class ActionModule(ActionBase):
             if 'copy' in self._task.args:
                 # They are mutually exclusive.
                 if 'remote_src' in self._task.args:
-                    raise AnsibleActionFailed("parameters are mutually exclusive: ('copy', 'remote_src')")
+                    raise AnsibleActionFail("parameters are mutually exclusive: ('copy', 'remote_src')")
                 # We will take the information from copy and store it in
                 # the remote_src var to use later in this file.
                 self._task.args['remote_src'] = remote_src = not boolean(self._task.args.pop('copy'), strict=False)
 
             if source is None or dest is None:
-                raise AnsibleActionFailed("src (or content) and dest are required")
+                raise AnsibleActionFail("src (or content) and dest are required")
 
             if creates:
                 # do not run the command if the line contains creates=filename
@@ -71,15 +71,15 @@ class ActionModule(ActionBase):
                 try:
                     source = self._loader.get_real_file(self._find_needle('files', source), decrypt=decrypt)
                 except AnsibleError as e:
-                    raise AnsibleActionFailed(to_text(e))
+                    raise AnsibleActionFail(to_text(e))
 
             try:
                 remote_stat = self._execute_remote_stat(dest, all_vars=task_vars, follow=True)
             except AnsibleError as e:
-                raise AnsibleActionFailed(to_text(e))
+                raise AnsibleActionFail(to_text(e))
 
             if not remote_stat['exists'] or not remote_stat['isdir']:
-                raise AnsibleActionFailed("dest '%s' must be an existing dir" % dest)
+                raise AnsibleActionFail("dest '%s' must be an existing dir" % dest)
 
             if not remote_src:
                 # transfer the file to a remote tmp location

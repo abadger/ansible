@@ -20,7 +20,7 @@ __metaclass__ = type
 
 import os
 
-from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFailed
+from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFail
 from ansible.module_utils._text import to_native
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible.plugins.action import ActionBase
@@ -41,7 +41,7 @@ class ActionModule(ActionBase):
 
         try:
             if src is None:
-                raise AnsibleActionFailed("src is required")
+                raise AnsibleActionFail("src is required")
             elif remote_src:
                 # everything is remote, so we just execute the module
                 # without changing any of the module arguments
@@ -50,7 +50,7 @@ class ActionModule(ActionBase):
             try:
                 src = self._find_needle('files', src)
             except AnsibleError as e:
-                raise AnsibleActionFailed(to_native(e))
+                raise AnsibleActionFail(to_native(e))
 
             tmp_src = self._connection._shell.join_path(self._connection._shell.tempdir, os.path.basename(src))
             self._transfer_file(src, tmp_src)

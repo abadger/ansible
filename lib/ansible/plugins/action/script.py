@@ -21,7 +21,7 @@ import os
 import re
 import shlex
 
-from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFailed, AnsibleActionSkipped
+from ansible.errors import AnsibleError, AnsibleAction, _AnsibleActionDone, AnsibleActionFail, AnsibleActionSkipped
 from ansible.module_utils._text import to_native, to_text
 from ansible.plugins.action import ActionBase
 
@@ -65,10 +65,10 @@ class ActionModule(ActionBase):
                 # Powershell is the only Windows-path aware shell
                 if self._connection._shell.SHELL_FAMILY == 'powershell' and \
                         not self.windows_absolute_path_detection.matches(chdir):
-                    raise AnsibleActionFailed('chdir %s must be an absolute path for a Windows remote node' % chdir)
+                    raise AnsibleActionFail('chdir %s must be an absolute path for a Windows remote node' % chdir)
                 # Every other shell is unix-path-aware.
                 if self._connection._shell.SHELL_FAMILY != 'powershell' and not chdir.startswith('/'):
-                    raise AnsibleActionFailed('chdir %s must be an absolute path for a Unix-aware remote node' % chdir)
+                    raise AnsibleActionFail('chdir %s must be an absolute path for a Unix-aware remote node' % chdir)
 
             # Split out the script as the first item in raw_params using
             # shlex.split() in order to support paths and files with spaces in the name.
@@ -80,7 +80,7 @@ class ActionModule(ActionBase):
             try:
                 source = self._loader.get_real_file(self._find_needle('files', source), decrypt=self._task.args.get('decrypt', True))
             except AnsibleError as e:
-                raise AnsibleActionFailed(to_native(e))
+                raise AnsibleActionFail(to_native(e))
 
             if not self._play_context.check_mode:
                 # transfer the file to a remote tmp location
@@ -120,7 +120,7 @@ class ActionModule(ActionBase):
             result['changed'] = True
 
             if 'rc' in result and result['rc'] != 0:
-                raise AnsibleActionFailed('non-zero return code')
+                raise AnsibleActionFail('non-zero return code')
 
         except AnsibleAction as e:
             result.update(e.result)
