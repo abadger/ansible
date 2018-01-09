@@ -388,8 +388,11 @@ class ActionModule(ActionBase):
             task_vars = dict()
 
         result = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
+        # Could be skipped by superclass __init__ if we don't need a tmp path early
         if tmp is None:
+            self._make_tmp_path()
             tmp = self._connection._shell.tempdir
 
         source = self._task.args.get('src', None)
@@ -548,6 +551,6 @@ class ActionModule(ActionBase):
             result.update(dict(dest=dest, src=source, changed=changed))
 
         # Delete tmp path
-        self._remove_tmp_path(self._connection._shell.tempdir)
+        self._remove_tmp_path(tmp)
 
         return result

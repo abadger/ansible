@@ -14,6 +14,7 @@ class ActionModule(ActionBase):
     def run(self, tmp=None, task_vars=None):
         self._supports_async = True
         results = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
         # Command module has a special config option to turn off the command nanny warnings
         if 'warn' not in self._task.args:

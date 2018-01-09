@@ -36,6 +36,7 @@ class ActionModule(ActionBase):
             task_vars = dict()
 
         result = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
         source = self._task.args.get('src', None)
         dest = self._task.args.get('dest', None)
@@ -119,5 +120,5 @@ class ActionModule(ActionBase):
         except AnsibleAction as e:
             result.update(e.result)
         finally:
-            self._remove_tmp_path(self._connection._shell.tempdir)
+            self._remove_tmp_path(tmp)
         return result

@@ -84,6 +84,7 @@ class ActionModule(ActionBase):
         self._supports_check_mode = False
 
         result = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
         if task_vars is None:
             task_vars = dict()
@@ -164,6 +165,6 @@ class ActionModule(ActionBase):
         except AnsibleAction as e:
             result.update(e.result)
         finally:
-            self._remove_tmp_path(self._connection._shell.tempdir)
+            self._remove_tmp_path(tmp)
 
         return result

@@ -30,6 +30,7 @@ class ActionModule(ActionBase):
         self._supports_async = True
 
         results = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
         if not results.get('skipped'):
 
@@ -51,6 +52,6 @@ class ActionModule(ActionBase):
 
         if not wrap_async and (not self._task.until or results.get('finished', False)):
             # remove a temporary path we created
-            self._remove_tmp_path(self._connection._shell.tempdir)
+            self._remove_tmp_path(tmp)
 
         return results

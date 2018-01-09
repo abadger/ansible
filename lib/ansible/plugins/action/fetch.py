@@ -43,6 +43,7 @@ class ActionModule(ActionBase):
             task_vars = dict()
 
         result = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
         if self._play_context.check_mode:
             result['skipped'] = True

@@ -74,6 +74,7 @@ class ActionModule(ActionBase):
             return dict(skipped=True)
 
         result = super(ActionModule, self).run(tmp, task_vars)
+        tmp = self._connection._shell.tempdir
 
         def ping_module_test(connect_timeout):
             ''' Test ping module, if available '''
