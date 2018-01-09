@@ -542,7 +542,6 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         ''' takes a remote path and performs tilde/$HOME expansion on the remote host '''
 
         expanded = path
-        print(path)
         m = self._connection._shell.HOMES_RE.match(path)
 
         if m is not None:
