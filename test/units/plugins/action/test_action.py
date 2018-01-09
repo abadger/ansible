@@ -246,7 +246,7 @@ class TestActionBase(unittest.TestCase):
         mock_connection._shell.mkdtemp.return_value = 'mkdir command'
         mock_connection._shell.join_path.side_effect = os.path.join
         mock_connection._shell.get_option = get_shell_opt
-        mock_connection._shell.HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)?')
+        mock_connection._shell.HOMES_RE = re.compile(r'(\'|\")?(~|\$HOME)(.*)')
 
         # we're using a real play context here
         play_context = PlayContext()
