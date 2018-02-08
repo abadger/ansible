@@ -194,7 +194,7 @@ if __name__ == '__main__':
     if len(sys.argv) < 5:
         print(json.dumps({
             "failed": True,
-            "msg": "usage: async_wrapper <jid> <time_limit> <modulescript> <argsfile> [-preserve_tmp]  "
+            "msg": "usage: async_wrapper <jid> <time_limit> <modulescript> <argsfile>"
                    "Humans, do not call directly!"
         }))
         sys.exit(1)
@@ -203,12 +203,8 @@ if __name__ == '__main__':
     time_limit = sys.argv[2]
     wrapped_module = sys.argv[3]
     argsfile = sys.argv[4]
-    if '-tmp-' not in os.path.dirname(wrapped_module):
-        preserve_tmp = True
-    elif len(sys.argv) > 5:
-        preserve_tmp = sys.argv[5] == '-preserve_tmp'
-    else:
-        preserve_tmp = False
+    # This used to be settable.  Now we always preserve temp for async
+    preserve_tmp = True
     # consider underscore as no argsfile so we can support passing of additional positional parameters
     if argsfile != '_':
         cmd = "%s %s" % (wrapped_module, argsfile)
