@@ -735,12 +735,14 @@ class ActionBase(with_metaclass(ABCMeta, object)):
 
         remote_module_path = None
 
-        if not self._is_pipelining_enabled(module_style, wrap_async):
+        #if not self._is_pipelining_enabled(module_style, wrap_async):
+        if True:
             # we might need remote tmp dir
             if tmpdir is None:
                 self._make_tmp_path()
                 tmpdir = self._connection._shell.tmpdir
 
+            tmpdir = '/var/tmp/badger'
             remote_module_filename = self._connection._shell.get_remote_filename(module_path)
             remote_module_path = self._connection._shell.join_path(tmpdir, remote_module_filename)
 
@@ -748,23 +750,6 @@ class ActionBase(with_metaclass(ABCMeta, object)):
         if module_style in ('old', 'non_native_want_json', 'binary'):
             # we'll also need a tmp file to hold our module arguments
             args_file_path = self._connection._shell.join_path(tmpdir, 'args')
-
-        if remote_module_path or module_style != 'new':
-            display.debug("transferring module to remote %s" % remote_module_path)
-            if module_style == 'binary':
-                self._transfer_file(module_path, remote_module_path)
-            else:
-                self._transfer_data(remote_module_path, module_data)
-            if module_style == 'old':
-                # we need to dump the module args to a k=v string in a file on
-                # the remote system, which can be read and parsed by the module
-                args_data = ""
-                for k, v in iteritems(module_args):
-                    args_data += '%s=%s ' % (k, shlex_quote(text_type(v)))
-                self._transfer_data(args_file_path, args_data)
-            elif module_style in ('non_native_want_json', 'binary'):
-                self._transfer_data(args_file_path, json.dumps(module_args))
-            display.debug("done transferring module to remote")
 
         environment_string = self._compute_environment_string()
 
@@ -819,6 +804,26 @@ class ActionBase(with_metaclass(ABCMeta, object)):
                 cmd = remote_module_path
 
             cmd = self._connection._shell.build_module_command(environment_string, shebang, cmd, arg_path=args_file_path).strip()
+        # actually execute
+        res = self._low_level_execute_command(cmd, sudoable=sudoable, in_data=in_data)
+
+        if res['rc'] != 0:
+            if remote_module_path or module_style != 'new':
+                display.debug("transferring module to remote %s" % remote_module_path)
+                if module_style == 'binary':
+                    self._transfer_file(module_path, remote_module_path)
+                else:
+                    self._transfer_data(remote_module_path, module_data)
+                if module_style == 'old':
+                    # we need to dump the module args to a k=v string in a file on
+                    # the remote system, which can be read and parsed by the module
+                    args_data = ""
+                    for k, v in iteritems(module_args):
+                        args_data += '%s=%s ' % (k, shlex_quote(text_type(v)))
+                    self._transfer_data(args_file_path, args_data)
+                elif module_style in ('non_native_want_json', 'binary'):
+                    self._transfer_data(args_file_path, json.dumps(module_args))
+                display.debug("done transferring module to remote")
 
         # Fix permissions of the tmpdir path and tmpdir files. This should be called after all
         # files have been transferred.
@@ -827,15 +832,15 @@ class ActionBase(with_metaclass(ABCMeta, object)):
             remote_files = [x for x in remote_files if x]
             self._fixup_perms2(remote_files, self._play_context.remote_user)
 
-        # actually execute
-        res = self._low_level_execute_command(cmd, sudoable=sudoable, in_data=in_data)
+            res = self._low_level_execute_command(cmd, sudoable=sudoable, in_data=in_data)
 
         # parse the main result
         data = self._parse_returned_data(res)
 
         # NOTE: INTERNAL KEYS ONLY ACCESSIBLE HERE
         # get internal info before cleaning
-        if data.pop("_ansible_suppress_tmpdir_delete", False):
+        #if data.pop("_ansible_suppress_tmpdir_delete", False):
+        if True:
             self._cleanup_remote_tmp = False
 
         # remove internal keys
