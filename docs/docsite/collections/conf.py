@@ -61,8 +61,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General substitutions.
-project = 'Ansible'
-copyright = "2019 Red Hat, Inc."
+project = 'Ansible Collections'
+copyright = "2020 Red Hat, Inc."
 
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
@@ -128,26 +128,25 @@ rst_epilog = """
 
 html_theme_path = ['../_themes']
 html_theme = 'sphinx_rtd_theme'
-html_short_title = 'Ansible Documentation'
+html_short_title = 'Ansible Collections Documentation'
 html_show_sphinx = False
 
 html_theme_options = {
-    'canonical_url': "https://docs.ansible.com/ansible/latest/",
-    'vcs_pageview_mode': 'edit'
+    'canonical_url': "https://docs.ansible.com/collections",
+    'vcs_pageview_mode': 'edit',
+    'display_version': False
 }
 
 html_context = {
-    'display_github': 'True',
+    'display_github': False,
     'github_user': 'ansible',
     'github_repo': 'ansible',
-    'github_version': 'devel/docs/docsite/rst/',
+    'github_version': 'devel/docs/docsite/collections/',
     'github_module_version': 'devel/lib/ansible/modules/',
-    'github_root_dir': 'devel/lib/ansible',
-    'github_cli_version': 'devel/lib/ansible/cli/',
     'current_version': version,
-    'latest_version': '2.9',
+    'latest_version': 'devel',
     # list specifically out of order to make latest work
-    'available_versions': ('latest', '2.8', '2.7', 'devel'),
+    # 'available_versions': ('devel'),
     'css_files': ('_static/ansible.css',  # overrides to the standard theme
                   ),
 }
@@ -159,7 +158,7 @@ html_context = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = 'Ansible Documentation'
+html_title = 'Ansible Collection Documentation'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 # html_short_title = None
@@ -276,14 +275,10 @@ autoclass_content = 'both'
 # location for the mappning to live) will confuse it.
 intersphinx_mapping = {'python': ('https://docs.python.org/2/', (None, '../python2.inv')),
                        'python3': ('https://docs.python.org/3/', (None, '../python3.inv')),
-                       'jinja2': ('http://jinja.palletsprojects.com/', (None, '../jinja2.inv')),
-                       'collections': ('https://docs.ansible.com/collections/',
-                                       (None, '../collections.inv',
-                                        'http://docs.testing.ansible.com/collections/objects.inv',
-                                        '../_collections_build/html/objects.inv')),
-                       'ansible_2_9': ('https://docs.ansible.com/ansible/2.9/', (None, '../ansible_2_9.inv')),
-                       'ansible_2_8': ('https://docs.ansible.com/ansible/2.8/', (None, '../ansible_2_8.inv')),
-                       'ansible_2_7': ('https://docs.ansible.com/ansible/2.7/', (None, '../ansible_2_7.inv')),
-                       'ansible_2_6': ('https://docs.ansible.com/ansible/2.6/', (None, '../ansible_2_6.inv')),
-                       'ansible_2_5': ('https://docs.ansible.com/ansible/2.5/', (None, '../ansible_2_5.inv')),
+                       'jinja2': ('http://jinja.palletsprojects.com/',
+                                  (None, '../jinja2.inv')),
+                       'ansible': ('https://docs.ansible.com/ansible/latest/',
+                                   (None, '../ansible.inv', '../_build/html/objects.inv')),
+                       'ansible_devel': ('https://docs.ansible.com/ansible/devel/',
+                                         (None, '../ansible-devel.inv', '../_build/html/objects.inv')),
                        }

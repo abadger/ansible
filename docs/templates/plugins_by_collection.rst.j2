@@ -1,0 +1,31 @@
+:orphan:
+
+.. _plugins_in_@{collection_name}@:
+
+Plugin Index
+============
+
+These are the plugins in the @{collection_name}@ collection
+
+.. toctree::
+    :maxdepth: 1
+
+{% for category in plugins | sort %}
+
+@{ category }@ Plugins
+@{ '-' * ((category | length) + 8) }@
+
+{% if category in ('module', 'module_util') %}
+{%   set normalized_category = category + 's' %}
+{% else %}
+{%   set normalized_category = category %}
+{% endif %}
+{% for plugin in plugins[category] | sort %}
+* :ref:`@{ plugin }@ <ansible_collections.@{ collection_name}@.plugins.@{normalized_category}@.@{plugin}@>` -- @{ plugins[category][plugin]['short_description'] }@
+{% endfor %}
+{% endfor %}
+
+
+.. seealso::
+
+    List of :ref:`collections <list_of_collections>` with docs hosted here.

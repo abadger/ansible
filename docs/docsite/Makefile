@@ -1,6 +1,7 @@
 OS := $(shell uname -s)
 SITELIB = $(shell python -c "from distutils.sysconfig import get_python_lib; print get_python_lib()"):
 PLUGIN_FORMATTER=../../hacking/build-ansible.py document-plugins
+COLLECTION_PLUGIN_FORMATTER=../../hacking/build-ansible.py document-collection-plugins
 TESTING_FORMATTER=../bin/testing_formatter.sh
 KEYWORD_DUMPER=../../hacking/build-ansible.py document-keywords
 CONFIG_DUMPER=../../hacking/build-ansible.py document-config
@@ -12,9 +13,13 @@ else
 CPUS ?= $(shell nproc)
 endif
 
-# Sets the build output directory if it's not already specified
+# Sets the build output directory for the main docsite if it's not already specified
 ifndef BUILDDIR
 	BUILDDIR = _build
+endif
+
+ifndef COLLECTIONSBUILDDIR
+	COLLECTIONSBUILDDIR = _collections_build
 endif
 
 MODULE_ARGS=
@@ -36,15 +41,21 @@ endif
 
 all: docs
 
-docs: htmldocs
+docs: htmldocs collectionhtmldocs
 
 generate_rst: collections_meta config cli keywords modules plugins testing
 
 htmldocs: generate_rst
 	CPUS=$(CPUS) $(MAKE) -f Makefile.sphinx html
 
+collectionhtmldocs: modules
+	CPUS=$(CPUS) $(MAKE) -f Makefile.sphinx html SOURCEDIR=collections BUILDDIR=$(COLLECTIONSBUILDDIR)
+
 singlehtmldocs: generate_rst
 	CPUS=$(CPUS) $(MAKE) -f Makefile.sphinx singlehtml
+
+collectionsinglehtmldocs: modules
+	CPUS=$(CPUS) $(MAKE) -f Makefile.sphinx singlehtml SOURCEDIR=collections BUILDDIR=$(COLLECTIONSBUILDDIR)
 
 webdocs: docs
 
@@ -55,7 +66,8 @@ clean:
 	-rm -rf $(BUILDDIR)/html
 	-rm -rf htmlout
 	-rm -rf module_docs
-	-rm -rf _build
+	-rm -rf $(BUILDDIR)
+	-rm -rf $(COLLECTIONSBUILDDIR)
 	-rm -f .buildinfo
 	-rm -f objects.inv
 	-rm -rf *.doctrees
@@ -78,6 +90,8 @@ clean:
 	rm -f rst/reference_appendices/playbooks_keywords.rst
 	rm -f rst/dev_guide/collections_galaxy_meta.rst
 	rm -f rst/cli/*.rst
+	find collections -type f \( -name "*.rst" \) -delete
+	find collections -type d -a -not -name 'collections' -exec rmdir \{\} \;
 
 .PHONY: docs clean
 
@@ -95,14 +109,18 @@ keywords: ../templates/playbooks_keywords.rst.j2
 config: ../templates/config.rst.j2
 	PYTHONPATH=../../lib $(CONFIG_DUMPER) --template-file=../templates/config.rst.j2 --output-dir=rst/reference_appendices/ ../../lib/ansible/config/base.yml
 
-modules: ../templates/plugin.rst.j2
-	PYTHONPATH=../../lib $(PLUGIN_FORMATTER) -t rst --template-dir=../templates --module-dir=../../lib/ansible/modules -o rst/modules/ $(MODULE_ARGS)
+core_modules: ../templates/plugin.rst.j2
+	PYTHONPATH=../../lib $(PLUGIN_FORMATTER) --template-dir=../templates --module-dir=../../lib/ansible/modules -o rst $(MODULE_ARGS)
+
+# Note: core_modules will overwrite collection modules so have to run core_modules first and this second
+modules: core_modules
+	PYTHONPATH=../../lib $(COLLECTION_PLUGIN_FORMATTER) full --template-dir=../templates -o . $(MODULE_ARGS)
 
 plugins: ../templates/plugin.rst.j2
 	@echo "looping over doc plugins"
 	for plugin in $(DOC_PLUGINS); \
 	do \
-		PYTHONPATH=../../lib $(PLUGIN_FORMATTER) -t rst --plugin-type $$plugin --template-dir=../templates --module-dir=../../lib/ansible/plugins/$$plugin -o rst $(PLUGIN_ARGS); \
+		PYTHONPATH=../../lib $(PLUGIN_FORMATTER) --plugin-type $$plugin --template-dir=../templates --module-dir=../../lib/ansible/plugins/$$plugin -o rst $(PLUGIN_ARGS); \
 	done
 
 testing:

@@ -5,10 +5,30 @@
 :orphan:
 {% endif %}
 
+{%- if plugin_type in ('module', 'module_util') %}
+{%-   set normalized_plugin_type = plugin_type + 's' %}
+{%- else %}
+{%-   set normalized_plugin_type = plugin_type %}
+{%- endif %}
+
+{% if collection -%}
+.. _ansible_collections.@{collection}@.plugins.@{normalized_plugin_type}@.@{module}@:
+{%- else -%}
 .. _@{ module }@_@{ plugin_type }@:
+{% endif -%}
+
 {% for alias in aliases %}
 .. _@{ alias }@_@{ plugin_type }@:
 {% endfor %}
+
+{% if collection %}
+.. note::
+    This module is part of the the `@{collection}@ collection <@{collection_source}@/@{collection | replace('.', '/')}@>`_.
+
+    To install it: :code:`ansible-galaxy collection install @{collection}@`.
+
+    To use it in a playbook, specify: :code:`@{collection}@.@{module}@`.
+{% endif %}
 
 {% if short_description %}
 {%   set title = module + ' -- ' + short_description | rst_ify %}
@@ -19,7 +39,7 @@
 @{ title }@
 @{ '+' * title|length }@
 
-{% if version_added is defined and version_added != '' -%}
+{% if version_added is still_relevant -%}
 .. versionadded:: @{ version_added | default('') }@
 {% endif %}
 
@@ -56,7 +76,7 @@ Synopsis
 
 {% endif %}
 
-{% if aliases is defined -%}
+{% if aliases is defined and aliases -%}
 Aliases: @{ ','.join(aliases) }@
 {% endif %}
 
@@ -121,7 +141,7 @@ Parameters
                         {% if value.get('elements') %} / <span style="color: purple">elements=@{ value.elements | documented_type }@</span>{% endif %}
                         {% if value.get('required', False) %} / <span style="color: red">required</span>{% endif %}
                     </div>
-                    {% if value.version_added %}<div style="font-style: italic; font-size: small; color: darkgreen">added in @{value.version_added}@</div>{% endif %}
+                    {% if value.version_added is still_relevant %}<div style="font-style: italic; font-size: small; color: darkgreen">added in @{value.version_added}@</div>{% endif %}
                 </td>
                 {# default / choices #}
                 <td>
@@ -241,6 +261,10 @@ See Also
 
 Examples
 --------
+{% if collection %}
+.. note::
+    These examples assume the ``collections`` keyword is defined in  playbook and do not use the fully qualified collection name.
+{% endif %}
 
 .. code-block:: yaml+jinja
 
@@ -296,7 +320,7 @@ Facts returned by this module are added/updated in the ``hostvars`` host facts a
                       <span style="color: purple">@{ value.type | documented_type }@</span>
                       {% if value.elements %} / <span style="color: purple">elements=@{ value.elements | documented_type }@</span>{% endif %}
                     </div>
-                    {% if value.version_added %}<div style="font-style: italic; font-size: small; color: darkgreen">added in @{value.version_added}@</div>{% endif %}
+                    {% if value.version_added is still_relevant %}<div style="font-style: italic; font-size: small; color: darkgreen">added in @{value.version_added}@</div>{% endif %}
                 </td>
                 <td>@{ value.returned | html_ify }@</td>
                 <td>
@@ -373,7 +397,7 @@ Common return values are documented :ref:`here <common_return_values>`, the foll
                       <span style="color: purple">@{ value.type | documented_type }@</span>
                       {% if value.elements %} / <span style="color: purple">elements=@{ value.elements | documented_type }@</span>{% endif %}
                     </div>
-                    {% if value.version_added %}<div style="font-style: italic; font-size: small; color: darkgreen">added in @{value.version_added}@</div>{% endif %}
+                    {% if value.version_added is still_relevant %}<div style="font-style: italic; font-size: small; color: darkgreen">added in @{value.version_added}@</div>{% endif %}
                 </td>
                 <td>@{ value.returned | html_ify }@</td>
                 <td>
@@ -459,6 +483,7 @@ Authors
 
 {% endif %}
 
+{% if not collection -%}
 .. hint::
 {%   if plugin_type == 'module' %}
     If you notice any issues in this documentation, you can `edit this document <https://github.com/ansible/ansible/edit/devel/lib/ansible/modules/@{ source }@?description=%23%23%23%23%23%20SUMMARY%0A%3C!---%20Your%20description%20here%20--%3E%0A%0A%0A%23%23%23%23%23%20ISSUE%20TYPE%0A-%20Docs%20Pull%20Request%0A%0A%2Blabel:%20docsite_pr>`_ to improve it.
@@ -468,4 +493,6 @@ Authors
 
 .. hint::
     Configuration entries for each entry type have a low to high priority order. For example, a variable that is lower in the list will override a variable that is higher up.
+{% endif %}
+
 {% endif %}

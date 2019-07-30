@@ -1,0 +1,29 @@
+{# avoids rST "isn't included in any toctree" errors for module docs #}
+{% if plugin_type == 'module' %}
+:orphan:
+{% endif %}
+
+.. _@{ module }@_@{ plugin_type }@:
+{% for alias in aliases %}
+.. _@{ alias }@_@{ plugin_type }@:
+{% endfor %}
+
+{% if short_description %}
+{%   set title = module + ' -- ' + short_description | rst_ify %}
+{% else %}
+{%   set title = module %}
+{% endif %}
+
+@{ title }@
+@{ '+' * title|length }@
+
+This module has moved to a collection.  To install it::
+
+    ansible-galaxy collection install @{collection}@
+
+{% if plugin_type in ('module', 'module_util') %}
+{%   set normalized_plugin_type = plugin_type + 's' %}
+{% else %}
+{%   set normalized_plugin_type = plugin_type %}
+{% endif %}
+Click for :ref:`usage documentation<ansible_collections.@{collection}@.plugins.@{normalized_plugin_type}@.@{module}@>`
